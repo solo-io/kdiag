@@ -110,29 +110,35 @@ func (o *ShellOptions) Run() error {
 
 	fmt.Fprintln(o.Out, "Connecting to pod...")
 
-	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:             o.In,
-		Stdout:            o.Out,
-		Stderr:            o.ErrOut,
-		Tty:               true,
-		TerminalSizeQueue: sizeQueue,
-	})
+	fn := func() error {
 
-	var exitCode = 0
+		err = exec.Stream(remotecommand.StreamOptions{
+			Stdin:             o.In,
+			Stdout:            o.Out,
+			Stderr:            o.ErrOut,
+			Tty:               true,
+			TerminalSizeQueue: sizeQueue,
+		})
 
-	if err != nil {
-		if exitErr, ok := err.(utilexec.ExitError); ok && exitErr.Exited() {
-			exitCode = exitErr.ExitStatus()
-			err = nil
+		var exitCode = 0
+		if err != nil {
+			if exitErr, ok := err.(utilexec.ExitError); ok && exitErr.Exited() {
+				exitCode = exitErr.ExitStatus()
+				err = nil
+			}
 		}
+		// TODO:
+		exitCode = exitCode
+		return err
+	}
+
+	if err := t.Safe(fn); err != nil {
+		return err
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to execute command: %v", err)
 	}
-
-	// TODO:
-	exitCode = exitCode
 
 	return nil
 }
@@ -141,6 +147,8 @@ func (o *ShellOptions) SetupTTY() term.TTY {
 	t := term.TTY{
 		Parent: nil,
 		Out:    o.Out,
+		In:     o.In,
+		Raw:    true,
 	}
 
 	t.In = o.In

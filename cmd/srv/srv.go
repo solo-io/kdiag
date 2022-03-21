@@ -1,7 +1,7 @@
 package main
 
-import "time"
+import "github.com/yuval-k/kdiag/pkg/cmd/srv"
 
 func main() {
-	time.Sleep(time.Hour)
+	srv.Run()
 }

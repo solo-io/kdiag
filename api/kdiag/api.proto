@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package kdiag.yuval.dev;
+
+option go_package = "github.com/yuval-k/kdiag/pkg/api/kdiag";
+
+message RedirectRequest {
+    uint32 port =1;
+}
+
+message RedirectResponse {
+    uint32 port =1;
+}
+
+service Manager {
+    // Stream Envoy access logs as they are captured.
+    rpc Redirect (RedirectRequest) returns (stream RedirectResponse) {}
+}

@@ -13,8 +13,8 @@ test: ginkgo generate fmt vet
 	$(GINKGO) -r --coverprofile cover.out --race
 
 .PHONY: generate
-generate:
-	go generate ./...
+generate: protoc-gen-go
+	PATH=$(shell pwd)/bin:$$PATH go generate ./...
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -40,10 +40,10 @@ GINKGO = $(shell pwd)/bin/ginkgo
 ginkgo: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(GINKGO),github.com/onsi/ginkgo/v2/ginkgo@v2.1.0)
 
-GORELEASER = $(shell pwd)/bin/goreleaser
-.PHONY: goreleaser
-goreleaser: ## Download envtest-setup locally if necessary.
-	$(call go-get-tool,$(GINKGO),github.com/goreleaser/goreleaser@v0.182.1)
+PROTOC_GEN_GO = $(shell pwd)/bin/protoc-gen-go
+.PHONY: protoc-gen-go
+protoc-gen-go: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(PROTOC_GEN_GO),google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1)
 
 create-test-env: docker-build
 	kind create cluster || true
