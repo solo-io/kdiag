@@ -11,6 +11,7 @@ import (
 	"github.com/yuval-k/kdiag/pkg/tunnel"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 type server struct {
@@ -32,7 +33,9 @@ func Start(ctx context.Context, bindAddress string) error {
 
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterManagerServer(grpcServer, newServer())
-	return	grpcServer.Serve(l)
+	reflection.Register(grpcServer)
+
+	return grpcServer.Serve(l)
 }
 
 func newServer() pb.ManagerServer {
@@ -56,9 +59,9 @@ func (s *server) Redirect(r *pb.RedirectRequest, respStream pb.Manager_RedirectS
 		return err
 	}
 	signal := make(chan uint16, 1)
-	ctx , cancel := context.WithCancel(respStream.Context())
+	ctx, cancel := context.WithCancel(respStream.Context())
 	defer cancel()
-	go tunnel.Tunnel(cancel, redir.Listener, signal)
+	go tunnel.Tunnel(ctx, redir.Listener, signal)
 
 	for {
 		select {
@@ -68,17 +71,8 @@ func (s *server) Redirect(r *pb.RedirectRequest, respStream pb.Manager_RedirectS
 			err = respStream.Send(&pb.RedirectResponse{Port: uint32(port)})
 			if err != nil {
 				return err
+			}
 		}
+
 	}
-
-}
-
-func RedirectTraffic(podPort int, localPort int) error {
-	// start listening socket on a random port
-
-	// setup iptables redirect to that random port
-
-	// every connection received, proxy to client via the grpc connection
-
-	panic("not implemented") // TODO: Implement
 }

@@ -1,15 +1,11 @@
 package manager
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
-	"io"
-	"os/exec"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/samber/lo"
@@ -20,18 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
-
-type ProcessInfo struct {
-	Pid  int
-	Name string
-}
-
-type Manager interface {
-	GetProcesses() ([]ProcessInfo, error)
-	Run(cmd *exec.Cmd) error
-	StartInteractiveShell() error
-	RedirectTraffic(podPort int, localPort int) error
-}
 
 func NewEmephemeralContainerManager(podGetter typedcorev1.PodsGetter) *EmephemeralContainerManager {
 	return &EmephemeralContainerManager{
@@ -119,51 +103,25 @@ func (e *EmephemeralContainerManager) ContainerName() string {
 	return name
 }
 
-func (e *EmephemeralContainerManager) ConnectToManager(ctx context.Context, podclient typedcorev1.PodInterface, podObj *corev1.Pod) (Manager, error) {
+func (e *EmephemeralContainerManager) xConnectToManager(ctx context.Context, podclient typedcorev1.PodInterface, podObj *corev1.Pod) (Manager, error) {
 
 	name := e.ContainerName()
-	port, err := getPortFromLogs(ctx, podclient, podObj, name)
+	port, err := getPortFromLogs(ctx, podclient, podObj.Name, name)
 	if err != nil {
 		return nil, err
 	}
-
-	// port forward this port
-	NewManager(podObj, name, port)
-
-	// port forward this port
-	return NewManager(podObj, name, port)
+	port = port
+	panic("TODO")
 }
+func (e *EmephemeralContainerManager) ManagerPort(ctx context.Context, podclient typedcorev1.PodInterface, podObj *corev1.Pod) (uint16, error) {
 
-func getPortFromLogs(ctx context.Context, podclient typedcorev1.PodInterface, podObj *corev1.Pod, container string) (int, error) {
-
-	// now, connect to the manager in the pod:
-	currOpts := &corev1.PodLogOptions{
-		Container: container,
-		Follow:    false,
-	}
-	readCloser, err := podclient.GetLogs(podObj.Name, currOpts).Stream(ctx)
+	name := e.ContainerName()
+	port, err := getPortFromLogs(ctx, podclient, podObj.Name, name)
 	if err != nil {
 		return 0, err
 	}
-	defer readCloser.Close()
-	r := bufio.NewReader(readCloser)
-	for {
-		bytes, err := r.ReadBytes('\n')
-		if err != nil {
-			if err != io.EOF {
-				return 0, err
-			}
-			return 0, fmt.Errorf("no port found in log")
-		}
-		submatch := portRegexp.FindSubmatch(bytes)
-		if submatch != nil {
-			port, err := strconv.Atoi(string(submatch[0]))
-			if err != nil {
-				return 0, err
-			}
-			return port, nil
-		}
-	}
+	return uint16(port), nil
+
 }
 
 func (e *EmephemeralContainerManager) createContainer(ctx context.Context, containerName, dbgimg, target string, podObj *corev1.Pod) (*corev1.Pod, error) {

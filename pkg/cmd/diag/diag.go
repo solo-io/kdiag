@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -42,7 +43,7 @@ type DiagOptions struct {
 
 	dbgContainerImage string
 	podName           string
-
+	labelSelector     string
 	genericclioptions.IOStreams
 }
 
@@ -78,6 +79,8 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&o.dbgContainerImage, "dbg-image", "r.h.yuval.dev/utils:"+version.Version, "default dbg container image")
 	cmd.PersistentFlags().StringVar(&o.podName, "pod", "", "podname to diagnose")
+	AddLabelSelectorFlagVar(cmd, &o.labelSelector)
+	cmd.PersistentFlags().StringVarP(&o.labelSelector, "labels", "l", "", "select a pod by label. an arbitrary pod will be selected, with preference to ready pods / newer pods.")
 	o.configFlags.AddFlags(cmd.PersistentFlags())
 
 	cmd.AddCommand(
@@ -159,8 +162,23 @@ func (o *DiagOptions) Validate() error {
 	if len(o.rawConfig.CurrentContext) == 0 {
 		return errNoContext
 	}
-	if len(o.podName) == 0 {
-		return fmt.Errorf("pod name is required")
+	havePodName := len(o.podName) == 0
+	haveLabelSelector := len(o.labelSelector) == 0
+
+	if havePodName == haveLabelSelector {
+		return fmt.Errorf("one of pod-name,label-selector must be provided, but not both")
 	}
+	if !havePodName {
+		pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{LabelSelector: o.labelSelector})
+		if err != nil {
+			return err
+		}
+		o.podName = pl.Items[0].Name
+	}
+
 	return nil
+}
+
+func AddLabelSelectorFlagVar(cmd *cobra.Command, p *string) {
+	cmd.Flags().StringVarP(p, "selector", "l", *p, "Selector (label query) to filter on, supports '=', '==', and '!='.(e.g. -l key1=value1,key2=value2). Matching objects must satisfy all of the specified label constraints.")
 }

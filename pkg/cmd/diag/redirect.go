@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/yuval-k/kdiag/pkg/manager"
 )
 
 // RedirOptions provides information required to update
@@ -106,5 +107,17 @@ func (o *RedirOptions) Validate() error {
 // current context based on a provided namespace.
 func (o *RedirOptions) Run() error {
 
-	return nil
+	mgr := manager.NewEmephemeralContainerManager(o.clientset.CoreV1())
+
+	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, "")
+	if err != nil {
+		return fmt.Errorf("failed to ensure pod managed: %v", err)
+	}
+	ctx := o.ctx
+	mgrmgr, err := manager.NewManager(ctx, o.restConfig, o.clientset, o.Out, o.ErrOut, o.podName, o.resultingContext.Namespace, mgr.ContainerName())
+	if err != nil {
+		return err
+	}
+
+	return mgrmgr.RedirectTraffic(ctx, o.remotePort, o.localPort)
 }

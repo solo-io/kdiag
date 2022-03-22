@@ -11,8 +11,9 @@ import (
 )
 
 // Stream Envoy access logs as they are captured.
-func Redirect(ctx context.Context, client pb.ManagerClient, podPort, localPort uint16) error {
-
+func Redirect(ctx context.Context, client pb.ManagerClient, podPort, localPort uint16, newPortForward func(ctx context.Context, podPort uint16) (*frwrd.PortForward, error)) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	cli, err := client.Redirect(ctx, &pb.RedirectRequest{Port: uint32(podPort)})
 	if err != nil {
 		return err
@@ -27,18 +28,22 @@ func Redirect(ctx context.Context, client pb.ManagerClient, podPort, localPort u
 		podPortServer := uint16(msg.Port)
 
 		if portFw == nil {
-			portFw = newPortForward(podPortServer)
+			portFw, err = newPortForward(ctx, podPortServer)
+			if err != nil {
+				return err
+			}
 			localFwPort, err = portFw.LocalPort()
 			if err != nil {
 				return err
 			}
 		}
-		conn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", localFwPort))
+		var d net.Dialer
+		conn, err := d.DialContext(ctx, "tcp", fmt.Sprintf("localhost:%d", localFwPort))
 		if err != nil {
 			return err
 		}
 
-		conn1, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", localPort))
+		conn1, err := d.DialContext(ctx, "tcp", fmt.Sprintf("localhost:%d", localPort))
 		if err != nil {
 			return err
 		}
@@ -53,8 +58,4 @@ func Redirect(ctx context.Context, client pb.ManagerClient, podPort, localPort u
 		}()
 
 	}
-}
-
-func newPortForward(podPort uint16) *frwrd.PortForward {
-	panic("TODO")
 }

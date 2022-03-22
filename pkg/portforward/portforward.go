@@ -6,26 +6,26 @@ import (
 	"io"
 	"net/http"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
 
 type PortForward struct {
-	Ctx        context.Context
-	Port       int
-	PodObj     *corev1.Pod
-	RESTConfig *rest.Config
+	Ctx          context.Context
+	Port         int
+	PodName      string
+	PodNamespace string
+	RESTConfig   *rest.Config
+	Out          io.Writer
+	ErrOut       io.Writer
 
 	// Address       []string
 	// Ports         []string
 
 	// StopChannel   chan struct{}
 	ReadyChannel chan struct{}
-
-	Out    io.Writer
-	ErrOut io.Writer
+	StopChannel  <-chan struct{}
 
 	fw *portforward.PortForwarder
 }
@@ -51,11 +51,14 @@ func (p *PortForward) ForwardPorts() error {
 	if err != nil {
 		return err
 	}
+	if p.ReadyChannel == nil {
+		p.ReadyChannel = make(chan struct{})
+	}
 
 	req := cli.Post().
 		Resource("pods").
-		Namespace(p.PodObj.Namespace).
-		Name(p.PodObj.Name).
+		Namespace(p.PodNamespace).
+		Name(p.PodName).
 		SubResource("portforward")
 	method := "POST"
 	url := req.URL()
@@ -68,8 +71,10 @@ func (p *PortForward) ForwardPorts() error {
 		return err
 	}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
-
-	stopChannel := p.Ctx.Done()
+	stopChannel := p.StopChannel
+	if stopChannel == nil {
+		stopChannel = p.Ctx.Done()
+	}
 	p.fw, err = portforward.NewOnAddresses(dialer, address, ports, stopChannel, p.ReadyChannel, p.Out, p.ErrOut)
 
 	return p.fw.ForwardPorts()
