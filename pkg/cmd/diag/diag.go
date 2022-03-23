@@ -79,7 +79,6 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&o.dbgContainerImage, "dbg-image", "r.h.yuval.dev/utils:"+version.Version, "default dbg container image")
 	cmd.PersistentFlags().StringVar(&o.podName, "pod", "", "podname to diagnose")
-	AddLabelSelectorFlagVar(cmd, &o.labelSelector)
 	cmd.PersistentFlags().StringVarP(&o.labelSelector, "labels", "l", "", "select a pod by label. an arbitrary pod will be selected, with preference to ready pods / newer pods.")
 	o.configFlags.AddFlags(cmd.PersistentFlags())
 
@@ -162,8 +161,8 @@ func (o *DiagOptions) Validate() error {
 	if len(o.rawConfig.CurrentContext) == 0 {
 		return errNoContext
 	}
-	havePodName := len(o.podName) == 0
-	haveLabelSelector := len(o.labelSelector) == 0
+	havePodName := len(o.podName) != 0
+	haveLabelSelector := len(o.labelSelector) != 0
 
 	if havePodName == haveLabelSelector {
 		return fmt.Errorf("one of pod-name,label-selector must be provided, but not both")

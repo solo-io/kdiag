@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -17,8 +18,10 @@ type PortForward struct {
 	PodName      string
 	PodNamespace string
 	RESTConfig   *rest.Config
-	Out          io.Writer
-	ErrOut       io.Writer
+	RESTClient   rest.Interface
+
+	Out    io.Writer
+	ErrOut io.Writer
 
 	// Address       []string
 	// Ports         []string
@@ -28,13 +31,6 @@ type PortForward struct {
 	StopChannel  <-chan struct{}
 
 	fw *portforward.PortForwarder
-}
-
-func (p *PortForward) RESTClient() (*rest.RESTClient, error) {
-	config := rest.CopyConfig(p.RESTConfig)
-	rest.SetKubernetesDefaults(config)
-	return rest.RESTClientFor(config)
-
 }
 
 func (p *PortForward) LocalPort() (uint16, error) {
@@ -47,15 +43,11 @@ func (p *PortForward) LocalPort() (uint16, error) {
 }
 
 func (p *PortForward) ForwardPorts() error {
-	cli, err := p.RESTClient()
-	if err != nil {
-		return err
-	}
 	if p.ReadyChannel == nil {
 		p.ReadyChannel = make(chan struct{})
 	}
 
-	req := cli.Post().
+	req := p.RESTClient.Post().Prefix("api", "v1").
 		Resource("pods").
 		Namespace(p.PodNamespace).
 		Name(p.PodName).
@@ -68,7 +60,7 @@ func (p *PortForward) ForwardPorts() error {
 
 	transport, upgrader, err := spdy.RoundTripperFor(p.RESTConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create round tripper: %v", err)
 	}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
 	stopChannel := p.StopChannel
@@ -76,6 +68,19 @@ func (p *PortForward) ForwardPorts() error {
 		stopChannel = p.Ctx.Done()
 	}
 	p.fw, err = portforward.NewOnAddresses(dialer, address, ports, stopChannel, p.ReadyChannel, p.Out, p.ErrOut)
+	errchan := make(chan error, 1)
 
-	return p.fw.ForwardPorts()
+	go func() {
+		errchan <- p.fw.ForwardPorts()
+	}()
+	select {
+	case err := <-errchan:
+		return err
+	case <-p.ReadyChannel:
+		return nil
+	case <-p.Ctx.Done():
+		return nil
+	case <-time.After(time.Second * 10):
+		return fmt.Errorf("timeout waiting for port forward to be ready")
+	}
 }

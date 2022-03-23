@@ -35,7 +35,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     lsb-release \
-    wget \
     iproute2 iptables strace google-perftools \
     && rm -rf /var/lib/apt/lists/*
 

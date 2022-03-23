@@ -5,6 +5,10 @@ import (
 	"io"
 	"net"
 	"strconv"
+
+	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
+	"github.com/yuval-k/kdiag/pkg/log"
+	"go.uber.org/zap"
 )
 
 // Tunnels this listener to the remote port.
@@ -30,22 +34,30 @@ func Tunnel(ctx context.Context, l net.Listener, signal chan<- uint16) error {
 	if err != nil {
 		return err
 	}
-
+	logger := log.WithContext(ctx)
+	if logger == nil {
+		logger = ctxzap.Extract(ctx)
+	}
+	logger = logger.With(zap.String("component", "tunnel"))
 	for {
+		logger.Debug("waiting for new connection")
 		// wait for local connection
 		conn, err := l.Accept()
 		if err != nil {
 			return err
 		}
 
+		logger.Debug("signaling to client")
 		// signal that we received a connection
 		signal <- uint16(localPortUInt)
 		// wait for remote connection
+		logger.Debug("waiting for client connection")
 		conn1, err := listener.Accept()
 		if err != nil {
 			return err
 		}
 
+		logger.Debug("proxying connection")
 		// tunnel them!
 		go func() {
 			defer conn.Close()

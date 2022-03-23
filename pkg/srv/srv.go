@@ -3,22 +3,28 @@ package srv
 import (
 	"context"
 	"fmt"
+	"io"
 	"math"
 	"net"
 
 	pb "github.com/yuval-k/kdiag/pkg/api/kdiag"
+	"github.com/yuval-k/kdiag/pkg/log"
 	"github.com/yuval-k/kdiag/pkg/redir"
 	"github.com/yuval-k/kdiag/pkg/tunnel"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 )
 
 type server struct {
 	pb.UnimplementedManagerServer
 }
 
-func Start(ctx context.Context, bindAddress string) error {
+func Start(ctx context.Context, logOut io.Writer, bindAddress string) error {
 	if bindAddress == "" {
 		bindAddress = ":0"
 	}
@@ -29,7 +35,21 @@ func Start(ctx context.Context, bindAddress string) error {
 	}
 	defer l.Close()
 
+	// print the port to stdout... TODO: do this via logging?!
+	// problem is we want it always outputted.
+	fmt.Fprintf(logOut, "Listening on %s\n", l.Addr().String())
+
+	logOpts := []grpc_zap.Option{}
 	var opts []grpc.ServerOption
+	zapLogger := log.WithContext(ctx)
+	opts = append(opts, grpc_middleware.WithUnaryServerChain(
+		grpc_ctxtags.UnaryServerInterceptor(grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor)),
+		grpc_zap.UnaryServerInterceptor(zapLogger, logOpts...),
+	),
+		grpc_middleware.WithStreamServerChain(
+			grpc_ctxtags.StreamServerInterceptor(grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor)),
+			grpc_zap.StreamServerInterceptor(zapLogger, logOpts...),
+		))
 
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterManagerServer(grpcServer, newServer())

@@ -48,9 +48,6 @@ func NewCmdRedir(diagOptions *DiagOptions) *cobra.Command {
 			return nil
 		},
 	}
-
-	//	cmd.Flags().BoolVar(&o.listDiags, "list", o.listDiags, "if true, print the list of all namespaces in the current KUBECONFIG")
-
 	return cmd
 }
 
@@ -69,12 +66,12 @@ func (o *RedirOptions) Complete(cmd *cobra.Command, args []string) error {
 		localString = parts[0]
 		remoteString = parts[0]
 	} else if len(parts) == 2 {
-		localString = parts[0]
+		localString = parts[1]
 		if localString == "" {
 			// support :5000
 			localString = "0"
 		}
-		remoteString = parts[1]
+		remoteString = parts[0]
 	} else {
 		return fmt.Errorf("invalid port format '%s'", portString)
 	}

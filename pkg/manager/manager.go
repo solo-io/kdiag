@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"strconv"
 	"time"
@@ -80,12 +79,12 @@ func NewManager(
 func (m *manager) connect(ctx context.Context, port uint16) error {
 	fw, err := m.newPortForward(ctx, port)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create port forward to port %d: %w", port, err)
 	}
 	m.fw = fw
 	localPort, err := fw.LocalPort()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get local port: %w", err)
 	}
 
 	var opts []grpc.DialOption
@@ -94,7 +93,7 @@ func (m *manager) connect(ctx context.Context, port uint16) error {
 
 	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", localPort), opts...)
 	if err != nil {
-		log.Fatalf("fail to dial: %v", err)
+		return fmt.Errorf("fail to dial: %w", err)
 	}
 	m.conn = conn
 	m.client = pb.NewManagerClient(conn)
@@ -140,13 +139,14 @@ func (m *manager) newPortForward(ctx context.Context, port uint16) (*frwrd.PortF
 		PodName:      m.podname,
 		PodNamespace: m.podnamespace,
 		RESTConfig:   m.RESTConfig,
+		RESTClient:   m.clientset.RESTClient(),
 		Out:          m.Out,
 		ErrOut:       m.ErrOut,
 	}
 
 	err := fw.ForwardPorts()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to forward port: %w", err)
 	}
 
 	select {
@@ -174,15 +174,15 @@ func getPortFromLogs(ctx context.Context, podclient typedcorev1.PodInterface, po
 		bytes, err := r.ReadBytes('\n')
 		if err != nil {
 			if err != io.EOF {
-				return 0, err
+				return 0, fmt.Errorf("failed to read logs: %w", err)
 			}
 			return 0, fmt.Errorf("no port found in log")
 		}
 		submatch := portRegexp.FindSubmatch(bytes)
 		if submatch != nil {
-			port, err := strconv.Atoi(string(submatch[0]))
+			port, err := strconv.Atoi(string(submatch[1]))
 			if err != nil {
-				return 0, err
+				return 0, fmt.Errorf("failed to parse port: %w", err)
 			}
 			return port, nil
 		}

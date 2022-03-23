@@ -28,7 +28,7 @@ type EmephemeralContainerManager struct {
 }
 
 var (
-	portRegexp = regexp.MustCompile(`\d+`)
+	portRegexp = regexp.MustCompile(`Listening on .+:(\d+)`)
 )
 
 // Create or connect to an ephemeral manager container in a pod

@@ -47,9 +47,11 @@ protoc-gen-go: ## Download envtest-setup locally if necessary.
 
 create-test-env: docker-build
 	kind create cluster || true
-	kubectl create deployment nginx --image=nginx:1.19 || true
+	kubectl delete pod -lapp=nginx || true
+	kubectl create deployment nginx --image=docker.io/library/nginx:1.19 || true
+	kubectl expose deploy nginx --port 80 --target-port 80 || true
 	kind load docker-image ${IMG}
-
+	kubectl create deployment curl --image=${IMG} -- bash -c "while true; do curl --head http://nginx; sleep 1; done"|| true
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
