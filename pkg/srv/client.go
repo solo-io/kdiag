@@ -6,8 +6,8 @@ import (
 	"io"
 	"net"
 
-	pb "github.com/yuval-k/kdiag/pkg/api/kdiag"
-	frwrd "github.com/yuval-k/kdiag/pkg/portforward"
+	pb "github.com/solo-io/kdiag/pkg/api/kdiag"
+	frwrd "github.com/solo-io/kdiag/pkg/portforward"
 )
 
 // Stream Envoy access logs as they are captured.

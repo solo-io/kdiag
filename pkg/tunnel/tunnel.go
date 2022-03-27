@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/logging/zap/ctxzap"
-	"github.com/yuval-k/kdiag/pkg/log"
+	"github.com/solo-io/kdiag/pkg/log"
 	"go.uber.org/zap"
 )
 

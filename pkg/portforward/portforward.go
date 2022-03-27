@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
@@ -18,7 +19,7 @@ type PortForward struct {
 	PodName      string
 	PodNamespace string
 	RESTConfig   *rest.Config
-	RESTClient   rest.Interface
+	Clientset    *kubernetes.Clientset
 
 	Out    io.Writer
 	ErrOut io.Writer
@@ -47,12 +48,11 @@ func (p *PortForward) ForwardPorts() error {
 		p.ReadyChannel = make(chan struct{})
 	}
 
-	req := p.RESTClient.Post().Prefix("api", "v1").
+	req := p.Clientset.CoreV1().RESTClient().Post().
 		Resource("pods").
-		Namespace(p.PodNamespace).
 		Name(p.PodName).
+		Namespace(p.PodNamespace).
 		SubResource("portforward")
-	method := "POST"
 	url := req.URL()
 	address := []string{"localhost"}
 
@@ -62,7 +62,7 @@ func (p *PortForward) ForwardPorts() error {
 	if err != nil {
 		return fmt.Errorf("failed to create round tripper: %v", err)
 	}
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, method, url)
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 	stopChannel := p.StopChannel
 	if stopChannel == nil {
 		stopChannel = p.Ctx.Done()
@@ -83,4 +83,11 @@ func (p *PortForward) ForwardPorts() error {
 	case <-time.After(time.Second * 10):
 		return fmt.Errorf("timeout waiting for port forward to be ready")
 	}
+}
+
+func (p *PortForward) Close() error {
+	if p != nil && p.fw != nil {
+		p.fw.Close()
+	}
+	return nil
 }

@@ -1,6 +1,3 @@
-# install:
-# gdb, dlv, tcpdump, strace, ltrace, valgrind, gprof, perf, pprof, gdb-rr, dot, ...
-
 # syntax=docker/dockerfile:1.3
 # Build the manager binary
 
@@ -35,7 +32,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     lsb-release \
-    iproute2 iptables strace google-perftools \
+    gdb gcc libc6-dev \
+    vim \
+    iproute2 iptables \
+    linux-tools-common linux-tools-generic \
+    strace \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /

@@ -6,12 +6,17 @@ import (
 	"io"
 	"math"
 	"net"
+	"os"
+	"os/exec"
 
-	pb "github.com/yuval-k/kdiag/pkg/api/kdiag"
-	"github.com/yuval-k/kdiag/pkg/log"
-	"github.com/yuval-k/kdiag/pkg/redir"
-	"github.com/yuval-k/kdiag/pkg/tunnel"
-
+	ps "github.com/mitchellh/go-ps"
+	"github.com/samber/lo"
+	pb "github.com/solo-io/kdiag/pkg/api/kdiag"
+	"github.com/solo-io/kdiag/pkg/log"
+	"github.com/solo-io/kdiag/pkg/redir"
+	"github.com/solo-io/kdiag/pkg/sockets"
+	"github.com/solo-io/kdiag/pkg/tunnel"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -78,6 +83,12 @@ func (s *server) Redirect(r *pb.RedirectRequest, respStream pb.Manager_RedirectS
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		<-respStream.Context().Done()
+		redir.Listener.Close()
+	}()
+
 	signal := make(chan uint16, 1)
 	ctx, cancel := context.WithCancel(respStream.Context())
 	defer cancel()
@@ -95,4 +106,53 @@ func (s *server) Redirect(r *pb.RedirectRequest, respStream pb.Manager_RedirectS
 		}
 
 	}
+}
+
+func (s *server) Ps(ctx context.Context, r *pb.PsRequest) (*pb.PsResponse, error) {
+	//	os.proc
+	processList, err := ps.Processes()
+	if err != nil {
+		return nil, fmt.Errorf("could not get process list: %w", err)
+	}
+
+	proceses, err := sockets.GetListeningPorts(ctx)
+	if err != nil {
+		log.WithContext(ctx).With(zap.Error(err)).Error("could not get listening ports")
+	}
+
+	procs := lo.Map(processList, func(t ps.Process, _ int) *pb.PsResponse_ProcessInfo {
+		var addrs []string
+		if proceses != nil {
+			if socks, ok := proceses[t.Pid()]; ok {
+				addrs = lo.Map(socks.Sockets, func(sock *sockets.Socket, _ int) string {
+					sid := sock.ID
+					return fmt.Sprintf("%s:%d", sid.Source.String(), sid.SourcePort)
+				})
+			}
+		}
+
+		return &pb.PsResponse_ProcessInfo{
+			Pid:             uint64(t.Pid()),
+			Ppid:            uint64(t.PPid()),
+			Name:            t.Executable(),
+			ListenAddresses: addrs,
+		}
+	})
+
+	myPid := os.Getpid()
+	procs = lo.Reject(procs, func(v *pb.PsResponse_ProcessInfo, i int) bool {
+		return v.Pid == uint64(myPid)
+	})
+	// map ages
+	resp := &pb.PsResponse{
+		Processes: procs,
+	}
+	return resp, nil
+}
+
+func (s *server) Pprof(context.Context, *pb.PprofRequest) (*pb.PprofResponse, error) {
+
+	exec.CommandContext(context.Background(), "google-pprof", "")
+
+	return nil, fmt.Errorf("method Pprof not implemented")
 }

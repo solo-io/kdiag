@@ -2,8 +2,8 @@
 # Image URL to use all building/pushing image targets
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse HEAD)
-IMG ?= r.h.yuval.dev/utils:$(VERSION)
-LDFLAGS := "-X github.com/yuval-k/kdiag/pkg/version.Version=$(VERSION) -X github.com/yuval-k/kdiag/pkg/version.Commit=$(COMMIT)"
+IMG ?= ghcr.io/solo-io/kdiag:$(VERSION)
+LDFLAGS := "-X github.com/solo-io/kdiag/pkg/version.Version=$(VERSION) -X github.com/solo-io/kdiag/pkg/version.Commit=$(COMMIT)"
 
 .PHONY: all
 all: docker-build

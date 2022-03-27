@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/yuval-k/kdiag/pkg/version"
+	"github.com/solo-io/kdiag/pkg/version"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -103,16 +103,6 @@ func (e *EmephemeralContainerManager) ContainerName() string {
 	return name
 }
 
-func (e *EmephemeralContainerManager) xConnectToManager(ctx context.Context, podclient typedcorev1.PodInterface, podObj *corev1.Pod) (Manager, error) {
-
-	name := e.ContainerName()
-	port, err := getPortFromLogs(ctx, podclient, podObj.Name, name)
-	if err != nil {
-		return nil, err
-	}
-	port = port
-	panic("TODO")
-}
 func (e *EmephemeralContainerManager) ManagerPort(ctx context.Context, podclient typedcorev1.PodInterface, podObj *corev1.Pod) (uint16, error) {
 
 	name := e.ContainerName()

@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion7
 type ManagerClient interface {
 	// Stream Envoy access logs as they are captured.
 	Redirect(ctx context.Context, in *RedirectRequest, opts ...grpc.CallOption) (Manager_RedirectClient, error)
+	Ps(ctx context.Context, in *PsRequest, opts ...grpc.CallOption) (*PsResponse, error)
+	Pprof(ctx context.Context, in *PprofRequest, opts ...grpc.CallOption) (*PprofResponse, error)
 }
 
 type managerClient struct {
@@ -31,7 +33,7 @@ func NewManagerClient(cc grpc.ClientConnInterface) ManagerClient {
 }
 
 func (c *managerClient) Redirect(ctx context.Context, in *RedirectRequest, opts ...grpc.CallOption) (Manager_RedirectClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Manager_ServiceDesc.Streams[0], "/kdiag.yuval.dev.Manager/Redirect", opts...)
+	stream, err := c.cc.NewStream(ctx, &Manager_ServiceDesc.Streams[0], "/kdiag.solo.io.Manager/Redirect", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +64,32 @@ func (x *managerRedirectClient) Recv() (*RedirectResponse, error) {
 	return m, nil
 }
 
+func (c *managerClient) Ps(ctx context.Context, in *PsRequest, opts ...grpc.CallOption) (*PsResponse, error) {
+	out := new(PsResponse)
+	err := c.cc.Invoke(ctx, "/kdiag.solo.io.Manager/Ps", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *managerClient) Pprof(ctx context.Context, in *PprofRequest, opts ...grpc.CallOption) (*PprofResponse, error) {
+	out := new(PprofResponse)
+	err := c.cc.Invoke(ctx, "/kdiag.solo.io.Manager/Pprof", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ManagerServer is the server API for Manager service.
 // All implementations must embed UnimplementedManagerServer
 // for forward compatibility
 type ManagerServer interface {
 	// Stream Envoy access logs as they are captured.
 	Redirect(*RedirectRequest, Manager_RedirectServer) error
+	Ps(context.Context, *PsRequest) (*PsResponse, error)
+	Pprof(context.Context, *PprofRequest) (*PprofResponse, error)
 	mustEmbedUnimplementedManagerServer()
 }
 
@@ -77,6 +99,12 @@ type UnimplementedManagerServer struct {
 
 func (UnimplementedManagerServer) Redirect(*RedirectRequest, Manager_RedirectServer) error {
 	return status.Errorf(codes.Unimplemented, "method Redirect not implemented")
+}
+func (UnimplementedManagerServer) Ps(context.Context, *PsRequest) (*PsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Ps not implemented")
+}
+func (UnimplementedManagerServer) Pprof(context.Context, *PprofRequest) (*PprofResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Pprof not implemented")
 }
 func (UnimplementedManagerServer) mustEmbedUnimplementedManagerServer() {}
 
@@ -112,13 +140,58 @@ func (x *managerRedirectServer) Send(m *RedirectResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Manager_Ps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagerServer).Ps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/kdiag.solo.io.Manager/Ps",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagerServer).Ps(ctx, req.(*PsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Manager_Pprof_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PprofRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ManagerServer).Pprof(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/kdiag.solo.io.Manager/Pprof",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ManagerServer).Pprof(ctx, req.(*PprofRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Manager_ServiceDesc is the grpc.ServiceDesc for Manager service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Manager_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "kdiag.yuval.dev.Manager",
+	ServiceName: "kdiag.solo.io.Manager",
 	HandlerType: (*ManagerServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Ps",
+			Handler:    _Manager_Ps_Handler,
+		},
+		{
+			MethodName: "Pprof",
+			Handler:    _Manager_Pprof_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Redirect",

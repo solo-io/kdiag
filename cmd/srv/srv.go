@@ -1,6 +1,6 @@
 package main
 
-import "github.com/yuval-k/kdiag/pkg/cmd/srv"
+import "github.com/solo-io/kdiag/pkg/cmd/srv"
 
 func main() {
 	srv.Run()

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/solo-io/kdiag/pkg/manager"
 	"github.com/spf13/cobra"
-	"github.com/yuval-k/kdiag/pkg/manager"
 )
 
 // RedirOptions provides information required to update
@@ -48,6 +48,7 @@ func NewCmdRedir(diagOptions *DiagOptions) *cobra.Command {
 			return nil
 		},
 	}
+	AddSinglePodFlags(cmd, o.DiagOptions)
 	return cmd
 }
 
@@ -96,8 +97,7 @@ func (o *RedirOptions) Complete(cmd *cobra.Command, args []string) error {
 
 // Validate ensures that all required arguments and flag values are provided
 func (o *RedirOptions) Validate() error {
-
-	return nil
+	return ValidateSinglePodFlags(o.DiagOptions)
 }
 
 // Run lists all available namespaces on a user's KUBECONFIG or updates the

@@ -4,13 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/solo-io/kdiag/pkg/version"
 	"github.com/spf13/cobra"
-	"github.com/yuval-k/kdiag/pkg/version"
 
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -77,14 +76,15 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVar(&o.dbgContainerImage, "dbg-image", "r.h.yuval.dev/utils:"+version.Version, "default dbg container image")
-	cmd.PersistentFlags().StringVar(&o.podName, "pod", "", "podname to diagnose")
-	cmd.PersistentFlags().StringVarP(&o.labelSelector, "labels", "l", "", "select a pod by label. an arbitrary pod will be selected, with preference to ready pods / newer pods.")
+	cmd.Version = version.Version
+
+	cmd.PersistentFlags().StringVar(&o.dbgContainerImage, "dbg-image", "ghcr.io/solo-io/kdiag:"+version.Version, "default dbg container image")
 	o.configFlags.AddFlags(cmd.PersistentFlags())
 
 	cmd.AddCommand(
 		NewCmdRedir(o),
 		NewCmdShell(o),
+		NewCmdLogs(o),
 	)
 
 	return cmd
@@ -160,19 +160,6 @@ func (o *DiagOptions) Complete(cmd *cobra.Command) error {
 func (o *DiagOptions) Validate() error {
 	if len(o.rawConfig.CurrentContext) == 0 {
 		return errNoContext
-	}
-	havePodName := len(o.podName) != 0
-	haveLabelSelector := len(o.labelSelector) != 0
-
-	if havePodName == haveLabelSelector {
-		return fmt.Errorf("one of pod-name,label-selector must be provided, but not both")
-	}
-	if !havePodName {
-		pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{LabelSelector: o.labelSelector})
-		if err != nil {
-			return err
-		}
-		o.podName = pl.Items[0].Name
 	}
 
 	return nil

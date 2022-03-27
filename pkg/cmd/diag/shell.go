@@ -3,8 +3,8 @@ package diag
 import (
 	"fmt"
 
+	"github.com/solo-io/kdiag/pkg/manager"
 	"github.com/spf13/cobra"
-	"github.com/yuval-k/kdiag/pkg/manager"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
@@ -48,7 +48,7 @@ func NewCmdShell(diagOptions *DiagOptions) *cobra.Command {
 			return nil
 		},
 	}
-
+	AddSinglePodFlags(cmd, o.DiagOptions)
 	return cmd
 }
 
@@ -64,8 +64,7 @@ func (o *ShellOptions) Complete(cmd *cobra.Command, args []string) error {
 
 // Validate ensures that all required arguments and flag values are provided
 func (o *ShellOptions) Validate() error {
-
-	return nil
+	return ValidateSinglePodFlags(o.DiagOptions)
 }
 
 // Run lists all available namespaces on a user's KUBECONFIG or updates the
@@ -107,11 +106,9 @@ func (o *ShellOptions) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed to create executor: %v", err)
 	}
-
 	fmt.Fprintln(o.Out, "Connecting to pod...")
 
 	fn := func() error {
-
 		err = exec.Stream(remotecommand.StreamOptions{
 			Stdin:             o.In,
 			Stdout:            o.Out,

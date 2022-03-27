@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/go-logr/zapr"
-	"github.com/yuval-k/kdiag/pkg/log"
-	srvimpl "github.com/yuval-k/kdiag/pkg/srv"
+	"github.com/solo-io/kdiag/pkg/log"
+	srvimpl "github.com/solo-io/kdiag/pkg/srv"
 	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc/grpclog"
 	"k8s.io/klog/v2"

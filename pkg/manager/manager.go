@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"time"
 
-	pb "github.com/yuval-k/kdiag/pkg/api/kdiag"
-	frwrd "github.com/yuval-k/kdiag/pkg/portforward"
-	"github.com/yuval-k/kdiag/pkg/srv"
+	pb "github.com/solo-io/kdiag/pkg/api/kdiag"
+	frwrd "github.com/solo-io/kdiag/pkg/portforward"
+	"github.com/solo-io/kdiag/pkg/srv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	corev1 "k8s.io/api/core/v1"
@@ -104,10 +104,9 @@ func (m *manager) Close() error {
 	if m.conn != nil {
 		m.conn.Close()
 	}
-	// TODO: cleanup the port forward
-	//	if m.fw != nil {
-	//		m.fw.Close()
-	//	}
+	if m.fw != nil {
+		m.fw.Close()
+	}
 	return nil
 }
 
@@ -139,7 +138,7 @@ func (m *manager) newPortForward(ctx context.Context, port uint16) (*frwrd.PortF
 		PodName:      m.podname,
 		PodNamespace: m.podnamespace,
 		RESTConfig:   m.RESTConfig,
-		RESTClient:   m.clientset.RESTClient(),
+		Clientset:    m.clientset,
 		Out:          m.Out,
 		ErrOut:       m.ErrOut,
 	}

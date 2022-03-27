@@ -44,13 +44,11 @@ func NewRedirection(fromPort uint16) (*Redirection, error) {
 }
 
 func (r *Redirection) Redirect() error {
-
 	return exec.Command("iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort))).Run()
 }
 
 func (r *Redirection) Close() error {
 	defer r.Listener.Close()
 	err := exec.Command("iptables", "-t", "nat", "-D", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort))).Run()
-
 	return err
 }

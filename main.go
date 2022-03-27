@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/go-logr/zapr"
+	"github.com/solo-io/kdiag/pkg/cmd/diag"
+	"github.com/solo-io/kdiag/pkg/log"
 	"github.com/spf13/pflag"
-	"github.com/yuval-k/kdiag/pkg/cmd/diag"
-	"github.com/yuval-k/kdiag/pkg/log"
 	"k8s.io/klog/v2"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"

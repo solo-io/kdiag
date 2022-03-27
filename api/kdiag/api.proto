@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package kdiag.yuval.dev;
+package kdiag.solo.io;
 
-option go_package = "github.com/yuval-k/kdiag/pkg/api/kdiag";
+option go_package = "github.com/solo-io/kdiag/pkg/api/kdiag";
 
 message RedirectRequest {
     uint32 port =1;
@@ -12,7 +12,32 @@ message RedirectResponse {
     uint32 port =1;
 }
 
+message PsRequest {
+}
+
+message PsResponse {
+    message ProcessInfo {
+        uint64 pid = 1;
+        uint64 ppid = 2;
+        string name = 3;
+        repeated string listen_addresses = 5;
+    }
+
+    repeated ProcessInfo processes = 1;
+}
+
+message PprofRequest {
+    uint64 pid = 1;
+}
+
+message PprofResponse {
+    // port to connect to and get the profile
+    uint32 port = 1;
+}
+
 service Manager {
     // Stream Envoy access logs as they are captured.
     rpc Redirect (RedirectRequest) returns (stream RedirectResponse) {}
+    rpc Ps (PsRequest) returns (PsResponse) {}
+    rpc Pprof (PprofRequest) returns (PprofResponse) {}
 }
