@@ -5,17 +5,25 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/solo-io/kdiag/pkg/manager"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
+
+type portPair struct {
+	localPort  uint16
+	remotePort uint16
+}
 
 // RedirOptions provides information required to update
 // the current context on a user's KUBECONFIG
 type RedirOptions struct {
 	*DiagOptions
-	args       []string
-	localPort  uint16
-	remotePort uint16
+	args      []string
+	portPairs []portPair
+
+	outgoing bool
 }
 
 // NewRedirOptions provides an instance of RedirOptions with default values
@@ -49,6 +57,7 @@ func NewCmdRedir(diagOptions *DiagOptions) *cobra.Command {
 		},
 	}
 	AddSinglePodFlags(cmd, o.DiagOptions)
+	cmd.Flags().BoolVar(&o.outgoing, "outgoing", false, "when set, redirects outgoing connections instead of incoming ones")
 	return cmd
 }
 
@@ -56,47 +65,52 @@ func NewCmdRedir(diagOptions *DiagOptions) *cobra.Command {
 func (o *RedirOptions) Complete(cmd *cobra.Command, args []string) error {
 	o.args = args
 
-	if len(o.args) != 1 {
-		return fmt.Errorf("either one or no arguments are allowed")
-	}
+	for _, portString := range o.args {
 
-	portString := o.args[0]
-	parts := strings.Split(portString, ":")
-	var localString, remoteString string
-	if len(parts) == 1 {
-		localString = parts[0]
-		remoteString = parts[0]
-	} else if len(parts) == 2 {
-		localString = parts[1]
-		if localString == "" {
-			// support :5000
-			localString = "0"
+		parts := strings.Split(portString, ":")
+		var localString, remoteString string
+		if len(parts) == 1 {
+			localString = parts[0]
+			remoteString = parts[0]
+		} else if len(parts) == 2 {
+			localString = parts[1]
+			if localString == "" {
+				// support :5000
+				localString = "0"
+			}
+			remoteString = parts[0]
+		} else {
+			return fmt.Errorf("invalid port format '%s'", portString)
 		}
-		remoteString = parts[0]
-	} else {
-		return fmt.Errorf("invalid port format '%s'", portString)
-	}
-	localPort, err := strconv.ParseUint(localString, 10, 16)
-	if err != nil {
-		return fmt.Errorf("error parsing local port '%s': %s", localString, err)
-	}
+		localPort, err := strconv.ParseUint(localString, 10, 16)
+		if err != nil {
+			return fmt.Errorf("error parsing local port '%s': %s", localString, err)
+		}
 
-	remotePort, err := strconv.ParseUint(remoteString, 10, 16)
-	if err != nil {
-		return fmt.Errorf("error parsing remote port '%s': %s", remoteString, err)
-	}
-	if remotePort == 0 {
-		return fmt.Errorf("remote port must be > 0")
-	}
+		remotePort, err := strconv.ParseUint(remoteString, 10, 16)
+		if err != nil {
+			return fmt.Errorf("error parsing remote port '%s': %s", remoteString, err)
+		}
+		if remotePort == 0 {
+			return fmt.Errorf("remote port must be > 0")
+		}
 
-	o.localPort = uint16(localPort)
-	o.remotePort = uint16(remotePort)
+		o.portPairs = append(o.portPairs, portPair{
+			localPort:  uint16(localPort),
+			remotePort: uint16(remotePort),
+		})
+
+	}
 
 	return nil
 }
 
 // Validate ensures that all required arguments and flag values are provided
 func (o *RedirOptions) Validate() error {
+	if o.outgoing && len(o.portPairs) == 0 {
+		return fmt.Errorf("must specify at least one port pair to redirect")
+	}
+
 	return ValidateSinglePodFlags(o.DiagOptions)
 }
 
@@ -106,7 +120,7 @@ func (o *RedirOptions) Run() error {
 
 	mgr := manager.NewEmephemeralContainerManager(o.clientset.CoreV1())
 
-	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, "")
+	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, o.targetContainerName)
 	if err != nil {
 		return fmt.Errorf("failed to ensure pod managed: %v", err)
 	}
@@ -116,5 +130,47 @@ func (o *RedirOptions) Run() error {
 		return err
 	}
 
-	return mgrmgr.RedirectTraffic(ctx, o.remotePort, o.localPort)
+	if len(o.portPairs) == 0 {
+		ports, err := mgrmgr.GetListeneningPorts(o.ctx)
+		if err != nil {
+			return err
+		}
+		o.portPairs = lo.Map(ports, func(port uint16, _ int) portPair {
+			return portPair{
+				localPort:  port,
+				remotePort: port,
+			}
+		})
+	}
+
+	if len(o.portPairs) == 0 {
+		return fmt.Errorf("no ports to redirect")
+	}
+
+	errGroup, ctx := errgroup.WithContext(o.ctx)
+
+	for _, portPair := range o.portPairs {
+		portPair := portPair
+
+		direction := "incoming"
+		if o.outgoing {
+			direction = "outgoing"
+		}
+
+		fmt.Fprintf(o.Out, "redirecting %s traffic from %s:%d to localhost:%d\n", direction, o.podName, portPair.remotePort, portPair.localPort)
+
+		errGroup.Go(func() error {
+			if o.outgoing {
+				return mgrmgr.RedirectOutgoingTraffic(ctx, portPair.remotePort, portPair.localPort)
+			} else {
+				return mgrmgr.RedirectIncomingTraffic(ctx, portPair.remotePort, portPair.localPort)
+			}
+		})
+	}
+	err = errGroup.Wait()
+	if err != nil {
+		fmt.Fprintf(o.ErrOut, "failed to redirect traffic: %v\n", err)
+		return err
+	}
+	return nil
 }

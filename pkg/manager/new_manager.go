@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -118,13 +119,19 @@ func (e *EmephemeralContainerManager) createContainer(ctx context.Context, conta
 	if target == "" {
 		target = podObj.Spec.Containers[0].Name
 	}
+
+	pullPolicy := corev1.PullIfNotPresent
+	if strings.HasSuffix(dbgimg, ":dev") || strings.HasSuffix(dbgimg, ":latest") {
+		pullPolicy = corev1.PullAlways
+	}
+
 	trueVar := true
 	ephemeralContainer := corev1.EphemeralContainer{
 		TargetContainerName: target,
 		EphemeralContainerCommon: corev1.EphemeralContainerCommon{
 			Name:                     containerName,
 			Image:                    dbgimg,
-			ImagePullPolicy:          corev1.PullIfNotPresent,
+			ImagePullPolicy:          pullPolicy,
 			TerminationMessagePolicy: corev1.TerminationMessageReadFile,
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &trueVar,

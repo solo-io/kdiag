@@ -15,6 +15,7 @@ test: ginkgo generate fmt vet
 .PHONY: generate
 generate: protoc-gen-go
 	PATH=$(shell pwd)/bin:$$PATH go generate ./...
+	go run pkg/cmd/scripts/docs.go
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.

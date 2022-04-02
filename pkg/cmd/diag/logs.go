@@ -1,17 +1,19 @@
 package diag
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"os/exec"
-	"strings"
-	"sync"
 
 	"github.com/samber/lo"
+	"github.com/solo-io/kdiag/pkg/logs"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	logExample = `
+	%[1]s --namespace=default logs --pod mypod
+`
 )
 
 // LogsOptions provides information required to update
@@ -21,6 +23,7 @@ type LogsOptions struct {
 
 	podNames       []string
 	labelSelectors []string
+	all            bool
 	args           []string
 }
 
@@ -38,7 +41,7 @@ func NewCmdLogs(diagOptions *DiagOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "logs",
 		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(diagExample, "kubectl"),
+		Example:      fmt.Sprintf(logExample, "kubectl diag"),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {
@@ -55,7 +58,8 @@ func NewCmdLogs(diagOptions *DiagOptions) *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().StringArrayVar(&o.podNames, "pod", nil, "podname to diagnose")
-	cmd.PersistentFlags().StringArrayVarP(&o.labelSelectors, "labels", "l", nil, "select a pod by label. an arbitrary pod will be selected, with preference to newer pods.")
+	cmd.PersistentFlags().StringArrayVarP(&o.labelSelectors, "labels", "l", nil, "select a pods by label.")
+	cmd.PersistentFlags().BoolVarP(&o.all, "all", "a", false, "select all pods in the namespace.")
 	return cmd
 }
 
@@ -68,12 +72,20 @@ func (o *LogsOptions) Complete(cmd *cobra.Command, args []string) error {
 
 // Validate ensures that all required arguments and flag values are provided
 func (o *LogsOptions) Validate() error {
-	for _, ls := range o.labelSelectors {
-		pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{LabelSelector: ls})
+	if o.all {
+		pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
-		o.podNames = append(o.podNames, lo.Map(pl.Items, func(p corev1.Pod, _ int) string { return p.Name })...)
+		o.podNames = lo.Map(pl.Items, func(p corev1.Pod, _ int) string { return p.Name })
+	} else {
+		for _, ls := range o.labelSelectors {
+			pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{LabelSelector: ls})
+			if err != nil {
+				return err
+			}
+			o.podNames = append(o.podNames, lo.Map(pl.Items, func(p corev1.Pod, _ int) string { return p.Name })...)
+		}
 	}
 
 	if len(o.podNames) == 0 {
@@ -83,88 +95,14 @@ func (o *LogsOptions) Validate() error {
 	return nil
 }
 
-type logEntry struct {
-	podName string
-	err     error
-	log     string
-	done    bool
-}
-
 // Run lists all available namespaces on a user's KUBECONFIG or updates the
 // current context based on a provided namespace.
 func (o *LogsOptions) Run() error {
-
-	// exec!
-	zero := int64(0)
-	ctx := o.ctx
-	logEntries := make(chan logEntry)
-
-	var wg sync.WaitGroup
-	for _, podName := range o.podNames {
-		// get the logs from the pod
-		currOpts := &corev1.PodLogOptions{
-			Container: "",
-			Follow:    true,
-			TailLines: &zero,
-		}
-		readCloser, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).GetLogs(podName, currOpts).Stream(ctx)
-		if err != nil {
-			return err
-		}
-		wg.Add(1)
-		go func(podName string) {
-			defer wg.Done()
-			defer readCloser.Close()
-			r := bufio.NewReader(readCloser)
-			for {
-				bytes, err := r.ReadBytes('\n')
-				if err != nil {
-					if err != io.EOF {
-						err := fmt.Errorf("failed to read logs: %w", err)
-						logEntries <- logEntry{podName: podName, err: err}
-					}
-					logEntries <- logEntry{podName: podName, done: true}
-				}
-
-				logline := strings.TrimSuffix(string(bytes), "\n")
-				logEntries <- logEntry{podName: podName, log: logline}
-			}
-		}(podName)
+	printer := logs.MultiLogPrinter{
+		Out:    o.Out,
+		ErrOut: o.ErrOut,
+		In:     o.In,
+		Args:   o.args,
 	}
-	go func() {
-		wg.Wait()
-		close(logEntries)
-	}()
-
-	go func() {
-		for entry := range logEntries {
-			if entry.err != nil {
-				fmt.Fprintf(o.ErrOut, "error reading logs for %s: %v\n", entry.podName, entry.err)
-				continue
-			}
-			if entry.done {
-				fmt.Fprintf(o.Out, "pod %s is done\n", entry.podName)
-			}
-			fmt.Fprintf(o.Out, "%s: %s\n", entry.podName, entry.log)
-		}
-	}()
-
-	if len(o.args) > 0 {
-		cmd := exec.CommandContext(ctx, o.args[0], o.args[1:]...)
-		cmd.Stderr = o.ErrOut
-		cmd.Stdout = o.Out
-		cmd.Stdin = o.In
-		err := cmd.Start()
-		if err != nil {
-			return err
-		}
-		cmd.Wait()
-	} else {
-		<-ctx.Done()
-	}
-
-	// print the logs
-	// run command
-
-	return nil
+	return printer.PrintLogs(o.ctx, o.clientset.CoreV1().Pods(o.resultingContext.Namespace), o.podNames)
 }

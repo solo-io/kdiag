@@ -40,9 +40,10 @@ type DiagOptions struct {
 	clientset        *kubernetes.Clientset
 	resultingContext *api.Context
 
-	dbgContainerImage string
-	podName           string
-	labelSelector     string
+	dbgContainerImage   string
+	podName             string
+	targetContainerName string
+	labelSelector       string
 	genericclioptions.IOStreams
 }
 
@@ -84,6 +85,7 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd.AddCommand(
 		NewCmdRedir(o),
 		NewCmdShell(o),
+		NewCmdManage(o),
 		NewCmdLogs(o),
 	)
 

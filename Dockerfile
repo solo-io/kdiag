@@ -35,7 +35,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdb gcc libc6-dev \
     vim \
     iproute2 iptables \
-    linux-tools-common linux-tools-generic \
     strace \
     && rm -rf /var/lib/apt/lists/*
 

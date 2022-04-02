@@ -12,6 +12,7 @@ import (
 
 	ps "github.com/mitchellh/go-ps"
 	"github.com/vishvananda/netlink/nl"
+	"go.uber.org/multierr"
 	"golang.org/x/sys/unix"
 )
 
@@ -222,7 +223,7 @@ const (
 	LISTEN = 1024
 )
 
-func SocketListen() ([]*Socket, error) {
+func SocketListenIpV4() ([]*Socket, error) {
 
 	s, err := nl.Subscribe(syscall.NETLINK_INET_DIAG)
 	if err != nil {
@@ -241,6 +242,43 @@ func SocketListen() ([]*Socket, error) {
 	if err != nil {
 		return nil, err
 	}
+	return deserialize(msgs)
+}
+func SocketListen() ([]*Socket, error) {
+	var errs error
+
+	ipv4, err := SocketListenIpV4()
+	errs = multierr.Append(errs, err)
+
+	ipv6, err := SocketListenIpV6()
+	errs = multierr.Append(errs, err)
+
+	return append(ipv4, ipv6...), errs
+}
+
+func SocketListenIpV6() ([]*Socket, error) {
+
+	s, err := nl.Subscribe(syscall.NETLINK_INET_DIAG)
+	if err != nil {
+		return nil, err
+	}
+	defer s.Close()
+	req := nl.NewNetlinkRequest(nl.SOCK_DIAG_BY_FAMILY, syscall.NLM_F_REQUEST|syscall.NLM_F_DUMP)
+	req.AddData(&socketRequest{
+		Family:   syscall.AF_INET6,
+		Protocol: syscall.IPPROTO_TCP,
+		States:   LISTEN,
+		ID:       SocketID{},
+	})
+	s.Send(req)
+	msgs, _, err := s.Receive()
+	if err != nil {
+		return nil, err
+	}
+	return deserialize(msgs)
+}
+
+func deserialize(msgs []syscall.NetlinkMessage) ([]*Socket, error) {
 	if len(msgs) == 0 {
 		return nil, errors.New("no message nor error from netlink")
 	}

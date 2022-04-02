@@ -74,14 +74,14 @@ func (s *server) Redirect(r *pb.RedirectRequest, respStream pb.Manager_RedirectS
 		return fmt.Errorf("port number %d is too large", r.Port)
 	}
 
-	redir, err := redir.NewRedirection(uint16(r.Port))
+	redir, err := redir.NewRedirection(uint16(r.Port), r.Outgoing)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create redirection: %w", err)
 	}
 	defer redir.Close()
 	err = redir.Redirect()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not redirect: %w", err)
 	}
 
 	go func() {
@@ -101,7 +101,7 @@ func (s *server) Redirect(r *pb.RedirectRequest, respStream pb.Manager_RedirectS
 		case port := <-signal:
 			err = respStream.Send(&pb.RedirectResponse{Port: uint32(port)})
 			if err != nil {
-				return err
+				return fmt.Errorf("could not send response: %w", err)
 			}
 		}
 
@@ -121,12 +121,15 @@ func (s *server) Ps(ctx context.Context, r *pb.PsRequest) (*pb.PsResponse, error
 	}
 
 	procs := lo.Map(processList, func(t ps.Process, _ int) *pb.PsResponse_ProcessInfo {
-		var addrs []string
+		var addrs []*pb.Address
 		if proceses != nil {
 			if socks, ok := proceses[t.Pid()]; ok {
-				addrs = lo.Map(socks.Sockets, func(sock *sockets.Socket, _ int) string {
+				addrs = lo.Map(socks.Sockets, func(sock *sockets.Socket, _ int) *pb.Address {
 					sid := sock.ID
-					return fmt.Sprintf("%s:%d", sid.Source.String(), sid.SourcePort)
+					return &pb.Address{
+						Ip:   sid.Source.String(),
+						Port: uint32(sid.SourcePort),
+					}
 				})
 			}
 		}

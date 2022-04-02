@@ -5,10 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os/exec"
+	"net/netip"
 	"strconv"
 	"time"
 
+	"github.com/samber/lo"
 	pb "github.com/solo-io/kdiag/pkg/api/kdiag"
 	frwrd "github.com/solo-io/kdiag/pkg/portforward"
 	"github.com/solo-io/kdiag/pkg/srv"
@@ -20,16 +21,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type ProcessInfo struct {
-	Pid  int
-	Name string
-}
-
 type Manager interface {
-	GetProcesses() ([]ProcessInfo, error)
-	Run(cmd *exec.Cmd) error
-	StartInteractiveShell() error
-	RedirectTraffic(ctx context.Context, podPort, localPort uint16) error
+	GetListeneningPorts(ctx context.Context) ([]uint16, error)
+	RedirectIncomingTraffic(ctx context.Context, podPort, localPort uint16) error
+	RedirectOutgoingTraffic(ctx context.Context, podPort, localPort uint16) error
 }
 type manager struct {
 	RESTConfig   *rest.Config
@@ -110,24 +105,37 @@ func (m *manager) Close() error {
 	return nil
 }
 
-func (m *manager) GetProcesses() ([]ProcessInfo, error) {
-	panic("not implemented") // TODO: Implement
+func (m *manager) GetListeneningPorts(ctx context.Context) ([]uint16, error) {
+	resp, err := m.client.Ps(ctx, &pb.PsRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processes: %w", err)
+	}
+	ports := lo.FlatMap(resp.Processes, func(t *pb.PsResponse_ProcessInfo, _ int) []uint16 {
+		return lo.Map(t.ListenAddresses, func(a *pb.Address, _ int) uint16 {
+			// exclude local host address, as they cannot be reached from outside
+			// should we make this an option?
+			listenaAddr, err := netip.ParseAddr(a.Ip)
+			if err != nil {
+				return 0
+			}
+			if listenaAddr.IsLoopback() {
+				return 0
+			}
+			return uint16(a.Port)
+		})
+	})
+
+	return lo.Reject(ports, func(v uint16, _ int) bool {
+		return v == 0
+	}), nil
 }
 
-func (m *manager) Run(cmd *exec.Cmd) error {
-	panic("not implemented") // TODO: Implement
+func (m *manager) RedirectIncomingTraffic(ctx context.Context, podPort, localPort uint16) error {
+	return srv.Redirect(ctx, m.client, false, podPort, localPort, m.newPortForward)
 }
 
-func (m *manager) StartInteractiveShell() error {
-	panic("not implemented") // TODO: Implement
-}
-
-func (m *manager) RedirectTraffic(ctx context.Context, podPort, localPort uint16) error {
-	// connect to the manager in the pod,
-	// start a stream and wait for remote connections
-	// proxy remote connections to local port
-
-	return srv.Redirect(ctx, m.client, podPort, localPort, m.newPortForward)
+func (m *manager) RedirectOutgoingTraffic(ctx context.Context, podPort, localPort uint16) error {
+	return srv.Redirect(ctx, m.client, true, podPort, localPort, m.newPortForward)
 }
 
 func (m *manager) newPortForward(ctx context.Context, port uint16) (*frwrd.PortForward, error) {

@@ -1,6 +1,7 @@
 package redir
 
 import (
+	"fmt"
 	"net"
 	"os/exec"
 	"strconv"
@@ -11,9 +12,10 @@ type Redirection struct {
 
 	fromPort  uint16
 	localPort uint16
+	outgoing  bool
 }
 
-func NewRedirection(fromPort uint16) (*Redirection, error) {
+func NewRedirection(fromPort uint16, outgoing bool) (*Redirection, error) {
 
 	// connect to the manager in the pod,
 	// start a stream and wait for remote connections
@@ -40,15 +42,34 @@ func NewRedirection(fromPort uint16) (*Redirection, error) {
 	return &Redirection{
 		Listener:  listener,
 		fromPort:  fromPort,
+		outgoing:  outgoing,
 		localPort: uint16(localPortUInt)}, nil
 }
 
 func (r *Redirection) Redirect() error {
-	return exec.Command("iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort))).Run()
+	if r.outgoing {
+		return execute("iptables", "-t", "nat", "-A", "OUTPUT", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "DNAT", "--to-destination", "127.0.0.1:"+strconv.Itoa(int(r.localPort)))
+	}
+	return execute("iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort)))
 }
 
 func (r *Redirection) Close() error {
 	defer r.Listener.Close()
-	err := exec.Command("iptables", "-t", "nat", "-D", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort))).Run()
-	return err
+
+	if r.outgoing {
+		return execute("iptables", "-t", "nat", "-D", "OUTPUT", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "DNAT", "--to-destination", "127.0.0.1:"+strconv.Itoa(int(r.localPort)))
+	}
+
+	return execute("iptables", "-t", "nat", "-D", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort)))
+}
+
+func execute(cmd string, args ...string) error {
+	out, err := exec.Command(cmd, args...).CombinedOutput()
+	if err != nil {
+		if len(out) > 1024 {
+			out = out[:1024]
+		}
+		return fmt.Errorf("%s %v failed: %w. output: %s", cmd, args, err, string(out))
+	}
+	return nil
 }
