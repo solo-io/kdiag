@@ -5,7 +5,8 @@ package kdiag.solo.io;
 option go_package = "github.com/solo-io/kdiag/pkg/api/kdiag";
 
 message RedirectRequest {
-    uint32 port =1;
+    uint32 port = 1;
+    bool outgoing = 2;
 }
 
 message RedirectResponse {
@@ -15,12 +16,17 @@ message RedirectResponse {
 message PsRequest {
 }
 
+message Address {
+    string ip = 1;
+    uint32 port = 2;
+}
+
 message PsResponse {
     message ProcessInfo {
         uint64 pid = 1;
         uint64 ppid = 2;
         string name = 3;
-        repeated string listen_addresses = 5;
+        repeated Address listen_addresses = 5;
     }
 
     repeated ProcessInfo processes = 1;
