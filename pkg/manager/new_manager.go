@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -33,7 +32,7 @@ var (
 )
 
 // Create or connect to an ephemeral manager container in a pod
-func (e *EmephemeralContainerManager) EnsurePodManaged(ctx context.Context, ns, pod, dbgimg, target string) (*corev1.Pod, error) {
+func (e *EmephemeralContainerManager) EnsurePodManaged(ctx context.Context, ns, pod, dbgimg, target string, pullPolicy corev1.PullPolicy) (*corev1.Pod, error) {
 
 	// name prefix is "dbg-tools-versionhash"
 
@@ -51,7 +50,7 @@ func (e *EmephemeralContainerManager) EnsurePodManaged(ctx context.Context, ns, 
 		return false
 	})
 	if !found {
-		podObj, err = e.createContainer(ctx, name, dbgimg, target, podObj)
+		podObj, err = e.createContainer(ctx, name, dbgimg, target, pullPolicy, podObj)
 		if err != nil {
 			return nil, err
 		}
@@ -115,14 +114,9 @@ func (e *EmephemeralContainerManager) ManagerPort(ctx context.Context, podclient
 
 }
 
-func (e *EmephemeralContainerManager) createContainer(ctx context.Context, containerName, dbgimg, target string, podObj *corev1.Pod) (*corev1.Pod, error) {
+func (e *EmephemeralContainerManager) createContainer(ctx context.Context, containerName, dbgimg, target string, pullPolicy corev1.PullPolicy, podObj *corev1.Pod) (*corev1.Pod, error) {
 	if target == "" {
 		target = podObj.Spec.Containers[0].Name
-	}
-
-	pullPolicy := corev1.PullIfNotPresent
-	if strings.HasSuffix(dbgimg, ":dev") || strings.HasSuffix(dbgimg, ":latest") {
-		pullPolicy = corev1.PullAlways
 	}
 
 	trueVar := true

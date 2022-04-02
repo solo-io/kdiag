@@ -117,10 +117,9 @@ func (o *RedirOptions) Validate() error {
 // Run lists all available namespaces on a user's KUBECONFIG or updates the
 // current context based on a provided namespace.
 func (o *RedirOptions) Run() error {
-
 	mgr := manager.NewEmephemeralContainerManager(o.clientset.CoreV1())
 
-	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, o.targetContainerName)
+	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, o.targetContainerName, o.pullPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to ensure pod managed: %v", err)
 	}

@@ -55,7 +55,7 @@ IMG=gcr.io/solo-test-236622/kdiag:dev
 make docker-build IMG=${IMG}
 docker push ${IMG}
 
-CONTAINER=$(go run . -l app=istiod -n istio-system --dbg-image ${IMG} manage|cut -d' ' -f1)
+CONTAINER=$(go run . -l app=istiod -n istio-system --dbg-image ${IMG} --pull-policy=Always manage|cut -d' ' -f1)
 PORT=$(kubectl logs -n istio-system deploy/istiod -c ${CONTAINER}|head -1|rev|cut -d: -f1|rev)
 kubectl port-forward -n istio-system deploy/istiod 8087:${PORT} &
 

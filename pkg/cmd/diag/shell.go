@@ -74,7 +74,7 @@ func (o *ShellOptions) Run() error {
 	// exec!
 	mgr := manager.NewEmephemeralContainerManager(o.clientset.CoreV1())
 
-	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, o.targetContainerName)
+	_, err := mgr.EnsurePodManaged(o.ctx, o.resultingContext.Namespace, o.podName, o.dbgContainerImage, o.targetContainerName, o.pullPolicy)
 	if err != nil {
 		return fmt.Errorf("failed to ensure pod managed: %v", err)
 	}

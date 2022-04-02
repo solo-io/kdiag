@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd/api"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -44,6 +45,8 @@ type DiagOptions struct {
 	podName             string
 	targetContainerName string
 	labelSelector       string
+	pullPolicyString    string
+	pullPolicy          corev1.PullPolicy
 	genericclioptions.IOStreams
 }
 
