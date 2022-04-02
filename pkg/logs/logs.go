@@ -20,6 +20,20 @@ type logEntry struct {
 	done    bool
 }
 
+type PodAndContainerName struct {
+	PodName string
+	// may be empty
+	ContainerName string
+}
+
+func (p *PodAndContainerName) String() string {
+	podnameToPrint := p.PodName
+	if p.ContainerName != "" {
+		podnameToPrint += ":" + p.ContainerName
+	}
+	return podnameToPrint
+}
+
 type MultiLogPrinter struct {
 	Out    io.Writer
 	ErrOut io.Writer
@@ -29,7 +43,7 @@ type MultiLogPrinter struct {
 
 // Run lists all available namespaces on a user's KUBECONFIG or updates the
 // current context based on a provided namespace.
-func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.PodInterface, podNames []string) error {
+func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.PodInterface, podNames []PodAndContainerName) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -41,14 +55,15 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	for _, podName := range podNames {
 		// get the logs from the pod
 		currOpts := &corev1.PodLogOptions{
-			Container: "",
+			Container: podName.ContainerName,
 			Follow:    true,
 			TailLines: &zero,
 		}
-		readCloser, err := podclient.GetLogs(podName, currOpts).Stream(ctx)
+		readCloser, err := podclient.GetLogs(podName.PodName, currOpts).Stream(ctx)
 		if err != nil {
 			return err
 		}
+
 		wg.Add(1)
 		go func(podName string) {
 			defer wg.Done()
@@ -68,7 +83,7 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 				logline := strings.TrimSuffix(string(bytes), "\n")
 				logEntries <- logEntry{podName: podName, log: logline}
 			}
-		}(podName)
+		}(podName.String())
 	}
 
 	go func() {

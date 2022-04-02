@@ -2,6 +2,7 @@ package diag
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 	"github.com/solo-io/kdiag/pkg/logs"
@@ -18,6 +19,7 @@ var (
 
 // LogsOptions provides information required to update
 // the current context on a user's KUBECONFIG
+
 type LogsOptions struct {
 	*DiagOptions
 
@@ -25,6 +27,8 @@ type LogsOptions struct {
 	labelSelectors []string
 	all            bool
 	args           []string
+
+	podAndContainerNames []logs.PodAndContainerName
 }
 
 // NewLogsOptions provides an instance of LogsOptions with default values
@@ -70,25 +74,42 @@ func (o *LogsOptions) Complete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func getContainerName(ls string) (string, string) {
+	if index := strings.LastIndexByte(ls, ':'); index > 0 {
+		return ls[:index], ls[index+1:]
+	}
+	return ls, ""
+}
+
 // Validate ensures that all required arguments and flag values are provided
 func (o *LogsOptions) Validate() error {
+	// alias here so less to type
+	type podCntnrName = logs.PodAndContainerName
 	if o.all {
 		pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
-		o.podNames = lo.Map(pl.Items, func(p corev1.Pod, _ int) string { return p.Name })
+		o.podAndContainerNames = lo.Map(pl.Items, func(p corev1.Pod, _ int) podCntnrName { return podCntnrName{PodName: p.Name} })
 	} else {
 		for _, ls := range o.labelSelectors {
+			ls, c := getContainerName(ls)
+
 			pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{LabelSelector: ls})
 			if err != nil {
 				return err
 			}
-			o.podNames = append(o.podNames, lo.Map(pl.Items, func(p corev1.Pod, _ int) string { return p.Name })...)
+			o.podAndContainerNames = append(o.podAndContainerNames, lo.Map(pl.Items, func(p corev1.Pod, _ int) podCntnrName {
+				return podCntnrName{PodName: p.Name, ContainerName: c}
+			})...)
+		}
+		for _, podName := range o.podNames {
+			n, c := getContainerName(podName)
+			o.podAndContainerNames = append(o.podAndContainerNames, podCntnrName{PodName: n, ContainerName: c})
 		}
 	}
 
-	if len(o.podNames) == 0 {
+	if len(o.podAndContainerNames) == 0 {
 		return fmt.Errorf("no pods found")
 	}
 
@@ -104,5 +125,5 @@ func (o *LogsOptions) Run() error {
 		In:     o.In,
 		Args:   o.args,
 	}
-	return printer.PrintLogs(o.ctx, o.clientset.CoreV1().Pods(o.resultingContext.Namespace), o.podNames)
+	return printer.PrintLogs(o.ctx, o.clientset.CoreV1().Pods(o.resultingContext.Namespace), o.podAndContainerNames)
 }

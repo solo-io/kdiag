@@ -45,6 +45,19 @@ https://gperftools.github.io/gperftools/cpuprofile.html
 https://docs.google.com/presentation/d/10JmeisHsug-7XCB5Ym1HPYoeKLU_r9MOSNNPGWAteKg/preview?pru=AAABf-EPQ3o*Jin1U1-U9oS0IXI9FRHpFg#slide=id.g5218f0a929_0_0
 
 
+# Example
+
+## Local istio debug
+
+To redirect a sidecar to your istio:
+
+start your local pilot discovery, and then:
+
+```shell
+kdiag -l app=productpage -n bookinfo redirect --outgoing 15010 15012 15014
+```
+
+## Get logs from workloads
 
 # dev/debug:
 
