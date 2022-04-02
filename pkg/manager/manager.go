@@ -15,6 +15,7 @@ import (
 	"github.com/solo-io/kdiag/pkg/srv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -84,7 +85,10 @@ func (m *manager) connect(ctx context.Context, port uint16) error {
 
 	var opts []grpc.DialOption
 
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:    time.Second * 10,
+		Timeout: time.Second * 5,
+	}))
 
 	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", localPort), opts...)
 	if err != nil {

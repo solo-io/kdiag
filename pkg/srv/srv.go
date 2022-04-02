@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"time"
 
 	ps "github.com/mitchellh/go-ps"
 	"github.com/samber/lo"
@@ -18,6 +19,7 @@ import (
 	"github.com/solo-io/kdiag/pkg/tunnel"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
@@ -47,14 +49,28 @@ func Start(ctx context.Context, logOut io.Writer, bindAddress string) error {
 	logOpts := []grpc_zap.Option{}
 	var opts []grpc.ServerOption
 	zapLogger := log.WithContext(ctx)
-	opts = append(opts, grpc_middleware.WithUnaryServerChain(
-		grpc_ctxtags.UnaryServerInterceptor(grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor)),
-		grpc_zap.UnaryServerInterceptor(zapLogger, logOpts...),
-	),
+
+	keepaliveTime := 10 * time.Second
+
+	opts = append(
+		opts, grpc_middleware.WithUnaryServerChain(
+			grpc_ctxtags.UnaryServerInterceptor(grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor)),
+			grpc_zap.UnaryServerInterceptor(zapLogger, logOpts...),
+		),
 		grpc_middleware.WithStreamServerChain(
 			grpc_ctxtags.StreamServerInterceptor(grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor)),
 			grpc_zap.StreamServerInterceptor(zapLogger, logOpts...),
-		))
+		),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime: keepaliveTime / 2,
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:                  keepaliveTime,
+			Timeout:               keepaliveTime,
+			MaxConnectionAge:      time.Duration(math.MaxInt64),
+			MaxConnectionAgeGrace: keepaliveTime,
+		}),
+	)
 
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterManagerServer(grpcServer, newServer())

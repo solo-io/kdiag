@@ -48,19 +48,18 @@ func NewRedirection(fromPort uint16, outgoing bool) (*Redirection, error) {
 
 func (r *Redirection) Redirect() error {
 	if r.outgoing {
-		return execute("iptables", "-t", "nat", "-A", "OUTPUT", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "DNAT", "--to-destination", "127.0.0.1:"+strconv.Itoa(int(r.localPort)))
+		return execute("iptables", "-w", "10", "-t", "nat", "-A", "OUTPUT", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "DNAT", "--to-destination", "127.0.0.1:"+strconv.Itoa(int(r.localPort)))
 	}
-	return execute("iptables", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort)))
+	return execute("iptables", "-w", "10", "-t", "nat", "-A", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort)))
 }
 
 func (r *Redirection) Close() error {
 	defer r.Listener.Close()
 
 	if r.outgoing {
-		return execute("iptables", "-t", "nat", "-D", "OUTPUT", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "DNAT", "--to-destination", "127.0.0.1:"+strconv.Itoa(int(r.localPort)))
+		return execute("iptables", "-w", "10", "-t", "nat", "-D", "OUTPUT", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "DNAT", "--to-destination", "127.0.0.1:"+strconv.Itoa(int(r.localPort)))
 	}
-
-	return execute("iptables", "-t", "nat", "-D", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort)))
+	return execute("iptables", "-w", "10", "-t", "nat", "-D", "PREROUTING", "-p", "tcp", "--dport", strconv.Itoa(int(r.fromPort)), "-j", "REDIRECT", "--to-port", strconv.Itoa(int(r.localPort)))
 }
 
 func execute(cmd string, args ...string) error {
