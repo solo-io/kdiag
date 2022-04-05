@@ -1,10 +1,11 @@
-Debug and performance tooling!
+Various Diagnostics and Debug Tooling.
 
+Set of tools to make it easier to develop service in kubernetes. Especially server / control planes.
 
 Examples:
 
 start a shell with debug tools:
--> kubectl diag shell mypod
+-> kubectl diag shell --pod mypod
 
 the reverse of port forward - redirect traffic from the pod locally
 -> kubectl diag port-redirect mypod 8080:80
@@ -33,6 +34,11 @@ k diag log-exec
 
 k diag log-exec pod pod2 -- curl localhost:8090
 k diag log-snapshot pod pod2 -- k exec pod2 curl localhost:8090
+
+
+cpu-profile:
+get pprof cpu dump (based on annotoation)
+get envoy cpu dump
 
 
 
@@ -78,3 +84,7 @@ kubectl logs -n istio-system deploy/istiod -c ${CONTAINER}
 
 
 ```
+
+# test krew bot
+
+ docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.42 krew-release-bot template --tag v0.0.1 --template-file /tmp/template-file.yaml

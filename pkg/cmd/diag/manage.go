@@ -7,6 +7,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	manageExample = `
+	Start the ephemeral container to manage a pod.
+	commands that need it do it automatically. this is mostly useful for testing / development cycle.
+`
+)
+
 // ManageOptions provides information required to update
 // the current context on a user's KUBECONFIG
 type ManageOptions struct {
@@ -29,7 +36,7 @@ func NewCmdManage(diagOptions *DiagOptions) *cobra.Command {
 		// hide as this command is pretty useless except for debugging
 		Hidden:       true,
 		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(diagExample, "kubectl"),
+		Example:      fmt.Sprintf(manageExample, "kubectl"),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {

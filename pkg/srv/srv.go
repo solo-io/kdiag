@@ -19,6 +19,7 @@ import (
 	"github.com/solo-io/kdiag/pkg/tunnel"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 
@@ -27,8 +28,23 @@ import (
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 )
 
+const (
+	keepaliveTime = 10 * time.Second
+)
+
 type server struct {
 	pb.UnimplementedManagerServer
+}
+
+func Connect(ctx context.Context, localPort uint16) (*grpc.ClientConn, error) {
+	var opts []grpc.DialOption
+
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:    keepaliveTime,
+		Timeout: time.Second * 5,
+	}))
+
+	return grpc.Dial(fmt.Sprintf("localhost:%d", localPort), opts...)
 }
 
 func Start(ctx context.Context, logOut io.Writer, bindAddress string) error {
@@ -49,8 +65,6 @@ func Start(ctx context.Context, logOut io.Writer, bindAddress string) error {
 	logOpts := []grpc_zap.Option{}
 	var opts []grpc.ServerOption
 	zapLogger := log.WithContext(ctx)
-
-	keepaliveTime := 10 * time.Second
 
 	opts = append(
 		opts, grpc_middleware.WithUnaryServerChain(

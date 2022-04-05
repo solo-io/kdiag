@@ -127,6 +127,18 @@ func (e *EmephemeralContainerManager) createContainer(ctx context.Context, conta
 			Image:                    dbgimg,
 			ImagePullPolicy:          pullPolicy,
 			TerminationMessagePolicy: corev1.TerminationMessageReadFile,
+			/*
+				Env: []corev1.EnvVar{
+					{
+						Name: "PPROF",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.annotations['debug.solo.io/pprof']",
+							},
+						},
+					},
+				},
+			*/
 			SecurityContext: &corev1.SecurityContext{
 				Privileged: &trueVar,
 				Capabilities: &corev1.Capabilities{

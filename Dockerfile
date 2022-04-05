@@ -1,7 +1,5 @@
-# syntax=docker/dockerfile:1.3
-# Build the manager binary
-
 FROM --platform=${BUILDPLATFORM} docker.io/library/golang:1.18-bullseye as builder
+# Build the manager binary
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
@@ -28,6 +26,7 @@ RUN GOOS=linux GOARCH="${TARGETPLATFORM##linux/}" make build-manager
 FROM --platform=${TARGETPLATFORM} docker.io/library/ubuntu:20.04
 ARG VERSION
 
+# Install dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -41,5 +40,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /
 
 COPY --from=builder /workspace/manager /usr/local/bin/manager
-
 ENTRYPOINT ["/usr/local/bin/manager"]

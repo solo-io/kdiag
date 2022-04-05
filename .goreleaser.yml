@@ -1,59 +1,62 @@
-project_name: kdiag
+project_name: kubectl-diag
 env:
   - CGO_ENABLED=0
-before:
-  hooks:
-    # We strongly recommend running tests to catch any regression before release.
-    # Even though, this an optional step.
-    - go test ./...
-    # As part of the release doc files are included as a separate deliverable for
-    # consumption by Packer.io. To include a separate docs.zip uncomment the following command.
-    - make ci-release-docs
 builds:
   # A separated build to run the packer-plugins-check only once for a linux_amd64 binary
   -
-    id: packer-plugin-arm-image
+    id: kubectl-diag
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - -trimpath #removes all file system paths from the compiled executable
     ldflags:
-      - '-s -w -X {{ .ModulePath }}/version.Version={{.Version}} -X {{ .ModulePath }}/version.Commit={{.Commit}} -X {{ .ModulePath }}/version.VersionPrerelease= '
+      - '-s -w -X {{ .ModulePath }}/pkg/version.Version={{.Version}} -X {{ .ModulePath }}/pkg/version.Commit={{.Commit}} -X {{ .ModulePath }}/pkg/version.VersionPrerelease= '
     goos:
       - linux
       - darwin
       - windows
     goarch:
       - amd64
-      - '386'
       - arm
       - arm64
-    binary: '{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-archives:
-- format: zip
-  files:
-    - none*
-  name_template: '{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-checksum:
-  name_template: '{{ .ProjectName }}_v{{ .Version }}_SHA256SUMS'
-  algorithm: sha256
+    binary: '{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}'
+  -
+    id: manager
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath #removes all file system paths from the compiled executable
+    ldflags:
+      - '-s -w -X {{ .ModulePath }}/pkg/version.Version={{.Version}} -X {{ .ModulePath }}/pkg/version.Commit={{.Commit}} -X {{ .ModulePath }}/pkg/version.VersionPrerelease= '
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    binary: manager
 
-release:
-  # If you want to manually examine the release before its live, uncomment this line:
-  # draft: true
-  # As part of the release doc files are included as a separate deliverable for consumption by Packer.io.
-  # To include a separate docs.zip uncomment the extra_files config and the docs.zip command hook above.
-  extra_files:
-  - glob: ./docs.zip
+archives:
+- name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+  builds:
+  - kubectl-diag
+  format: tar.gz
+  files:
+    - LICENSE
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Tag }}_SHA256SUMS'
+  algorithm: sha256
 
 changelog:
   skip: true
 
 dockers:
-  - use_buildx: true
+  - use: buildx
     image_templates:
-    - 'ghcr.io/solo-io/kdiag:{{ .Version }}'
-    dockerfile: Dockerfile
+    - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-amd64'
+    dockerfile: Dockerfile.release
     goos: linux
+    goarch: amd64
+    ids:
+      - manager
     build_flag_templates:
     - "--pull"
     - "--label=org.opencontainers.image.created={{.Date}}"
@@ -62,4 +65,27 @@ dockers:
     - "--label=org.opencontainers.image.version={{.Version}}"
     - "--build-arg=VERSION={{.Version}}"
     - "--build-arg=COMMIT={{.Commit}}"
-    - "--platform=linux/amd64,linux/arm64"
+    - "--platform=linux/amd64"
+  - use: buildx
+    image_templates:
+    - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-arm64v8'
+    dockerfile: Dockerfile.release
+    goos: linux
+    goarch: arm64
+    ids:
+      - manager
+    build_flag_templates:
+    - "--pull"
+    - "--label=org.opencontainers.image.created={{.Date}}"
+    - "--label=org.opencontainers.image.title={{.ProjectName}}"
+    - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+    - "--label=org.opencontainers.image.version={{.Version}}"
+    - "--build-arg=VERSION={{.Version}}"
+    - "--build-arg=COMMIT={{.Commit}}"
+    - "--platform=linux/arm64/v8"
+docker_manifests:
+  # https://goreleaser.com/customization/docker_manifest/
+  - name_template: 'ghcr.io/solo-io/kdiag:{{ .Tag }}'
+    image_templates:
+      - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-amd64'
+      - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-arm64v8'

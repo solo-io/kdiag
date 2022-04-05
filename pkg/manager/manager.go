@@ -14,8 +14,6 @@ import (
 	frwrd "github.com/solo-io/kdiag/pkg/portforward"
 	"github.com/solo-io/kdiag/pkg/srv"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -83,19 +81,11 @@ func (m *manager) connect(ctx context.Context, port uint16) error {
 		return fmt.Errorf("failed to get local port: %w", err)
 	}
 
-	var opts []grpc.DialOption
-
-	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(keepalive.ClientParameters{
-		Time:    time.Second * 10,
-		Timeout: time.Second * 5,
-	}))
-
-	conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", localPort), opts...)
+	m.conn, err = srv.Connect(ctx, localPort)
 	if err != nil {
 		return fmt.Errorf("fail to dial: %w", err)
 	}
-	m.conn = conn
-	m.client = pb.NewManagerClient(conn)
+	m.client = pb.NewManagerClient(m.conn)
 	return nil
 }
 
@@ -161,6 +151,8 @@ func (m *manager) newPortForward(ctx context.Context, port uint16) (*frwrd.PortF
 	}
 
 	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
 	case <-time.After(time.Second * 10):
 		return nil, fmt.Errorf("timeout waiting for port forward to start")
 	case <-fw.ReadyChannel:
@@ -170,10 +162,12 @@ func (m *manager) newPortForward(ctx context.Context, port uint16) (*frwrd.PortF
 
 func getPortFromLogs(ctx context.Context, podclient typedcorev1.PodInterface, podName, container string) (int, error) {
 
+	limit := int64(1024)
 	// now, connect to the manager in the pod:
 	currOpts := &corev1.PodLogOptions{
-		Container: container,
-		Follow:    false,
+		Container:  container,
+		Follow:     false,
+		LimitBytes: &limit,
 	}
 	readCloser, err := podclient.GetLogs(podName, currOpts).Stream(ctx)
 	if err != nil {

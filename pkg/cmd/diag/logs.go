@@ -13,7 +13,12 @@ import (
 
 var (
 	logExample = `
-	%[1]s --namespace=default logs --pod mypod
+	The use case for this command is when you want to see the impact of an action over the container logs.
+	As such, this command tails and follows the logs while a command is executed.
+	for example, get all the logs from the "istio-proxy" container in the bookinfo namespace:
+	while executing a curl command:
+
+	%[1]s logs -n bookinfo --all -c istio-proxy -- curl http://foo.bar.com
 `
 )
 
@@ -26,6 +31,7 @@ type LogsOptions struct {
 	podNames       []string
 	labelSelectors []string
 	all            bool
+	containerName  string
 	args           []string
 
 	podAndContainerNames []logs.PodAndContainerName
@@ -61,9 +67,10 @@ func NewCmdLogs(diagOptions *DiagOptions) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.PersistentFlags().StringArrayVar(&o.podNames, "pod", nil, "podname to diagnose")
-	cmd.PersistentFlags().StringArrayVarP(&o.labelSelectors, "labels", "l", nil, "select a pods by label.")
-	cmd.PersistentFlags().BoolVarP(&o.all, "all", "a", false, "select all pods in the namespace.")
+	cmd.Flags().StringArrayVar(&o.podNames, "pod", nil, "podname to view logs of. you can use podname:containername to specify container name")
+	cmd.Flags().StringArrayVarP(&o.labelSelectors, "labels", "l", nil, "select a pods to watch logs by label. you can use k=v:containername to specify container name")
+	cmd.Flags().BoolVarP(&o.all, "all", "a", false, "select all pods in the namespace")
+	cmd.Flags().StringVarP(&o.containerName, "container", "c", "", "default container name to use for logs. defaults to first container in the pod")
 	return cmd
 }
 
@@ -74,11 +81,11 @@ func (o *LogsOptions) Complete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func getContainerName(ls string) (string, string) {
+func (o *LogsOptions) getContainerName(ls string) (string, string) {
 	if index := strings.LastIndexByte(ls, ':'); index > 0 {
 		return ls[:index], ls[index+1:]
 	}
-	return ls, ""
+	return ls, o.containerName
 }
 
 // Validate ensures that all required arguments and flag values are provided
@@ -90,10 +97,12 @@ func (o *LogsOptions) Validate() error {
 		if err != nil {
 			return err
 		}
-		o.podAndContainerNames = lo.Map(pl.Items, func(p corev1.Pod, _ int) podCntnrName { return podCntnrName{PodName: p.Name} })
+		o.podAndContainerNames = lo.Map(pl.Items, func(p corev1.Pod, _ int) podCntnrName {
+			return podCntnrName{PodName: p.Name, ContainerName: o.containerName}
+		})
 	} else {
 		for _, ls := range o.labelSelectors {
-			ls, c := getContainerName(ls)
+			ls, c := o.getContainerName(ls)
 
 			pl, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).List(o.ctx, metav1.ListOptions{LabelSelector: ls})
 			if err != nil {
@@ -104,7 +113,7 @@ func (o *LogsOptions) Validate() error {
 			})...)
 		}
 		for _, podName := range o.podNames {
-			n, c := getContainerName(podName)
+			n, c := o.getContainerName(podName)
 			o.podAndContainerNames = append(o.podAndContainerNames, podCntnrName{PodName: n, ContainerName: c})
 		}
 	}

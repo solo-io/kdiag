@@ -12,6 +12,24 @@ import (
 	"k8s.io/kubectl/pkg/util/term"
 )
 
+var (
+	shellExample = `
+	Start a shell to our ephemeral container. it has various debugging tools.
+
+	For example:
+
+	%[1]s -l app=productpage -n bookinfo -t istio-proxy shell
+
+	Start a shell targeting the istio-proxy container in the productpage pod. This means that you 
+	will share the same pid namespace as the istio-proxy container. To access the file-system
+	of the istio-proxy container, go to "/proc/1/root".
+	You can also use "nsenter --mount=/proc/1/ns/mnt" to get a shell to the target container.
+
+	Note: a container is only created once, and may have been created from the previous commands. so specifying
+	a different target the second time will have no effect.
+`
+)
+
 // ShellOptions provides information required to update
 // the current context on a user's KUBECONFIG
 type ShellOptions struct {
@@ -32,7 +50,7 @@ func NewCmdShell(diagOptions *DiagOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "shell",
 		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(diagExample, "kubectl"),
+		Example:      fmt.Sprintf(shellExample, "kubectl diag"),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {
@@ -125,7 +143,7 @@ func (o *ShellOptions) Run() error {
 			}
 		}
 		// TODO:
-		exitCode = exitCode
+		_ = exitCode
 		return err
 	}
 

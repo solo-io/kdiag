@@ -1,0 +1,17 @@
+FROM --platform=${TARGETPLATFORM} docker.io/library/ubuntu:20.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    lsb-release \
+    gdb gcc libc6-dev \
+    vim \
+    iproute2 iptables \
+    strace \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
+
+COPY manager /usr/local/bin/manager
+ENTRYPOINT ["/usr/local/bin/manager"]

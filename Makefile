@@ -27,11 +27,7 @@ vet: ## Run go vet against code.
 
 .PHONY: docker-build
 docker-build:
-	DOCKER_BUILDKIT=1 docker build --tag ${IMG} --build-arg=VERSION=$(VERSION) --build-arg=COMMIT=$(COMMIT) .
-
-.PHONY: docker-build-push
-docker-build-push:
-	DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64,linux/arm64 --tag ${IMG} --build-arg=VERSION=$(VERSION) --build-arg=COMMIT=$(COMMIT) .
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile --tag ${IMG} --build-arg=VERSION=$(VERSION) --build-arg=COMMIT=$(COMMIT) .
 
 build-manager:
 	CGO_ENABLED=0 go build -a -o manager -ldflags=$(LDFLAGS) cmd/srv/srv.go

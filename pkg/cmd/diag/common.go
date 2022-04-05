@@ -12,8 +12,8 @@ import (
 func AddSinglePodFlags(cmd *cobra.Command, o *DiagOptions) {
 	cmd.PersistentFlags().StringVar(&o.podName, "pod", "", "podname to diagnose")
 	cmd.PersistentFlags().StringVarP(&o.targetContainerName, "target", "t", "", "target container to diagnose, defaults to first container in pod")
-	cmd.PersistentFlags().StringVarP(&o.labelSelector, "labels", "l", "", "select a pod by label. an arbitrary pod will be selected, with preference to newer pods.")
-	cmd.PersistentFlags().StringVar(&o.pullPolicyString, "pull-policy", string(corev1.PullIfNotPresent), "image pull policy for the ephemeral container. defaults to IfNotPresent.")
+	cmd.PersistentFlags().StringVarP(&o.labelSelector, "labels", "l", "", "select a pod by label. an arbitrary pod will be selected, with preference to newer pods")
+	cmd.PersistentFlags().StringVar(&o.pullPolicyString, "pull-policy", string(corev1.PullIfNotPresent), "image pull policy for the ephemeral container. defaults to IfNotPresent")
 }
 
 func ValidateSinglePodFlags(o *DiagOptions) error {

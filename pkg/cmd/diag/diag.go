@@ -3,6 +3,7 @@ package diag
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/solo-io/kdiag/pkg/version"
 	"github.com/spf13/cobra"
@@ -82,7 +83,12 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 
 	cmd.Version = version.Version
 
-	cmd.PersistentFlags().StringVar(&o.dbgContainerImage, "dbg-image", "ghcr.io/solo-io/kdiag:"+version.Version, "default dbg container image")
+	defaultImage := "ghcr.io/solo-io/kdiag:" + version.Version
+	if envImg := os.Getenv("KUBECTL_PLUGINS_LOCAL_FLAG_DBG_IMAGE"); len(envImg) != 0 {
+		defaultImage = envImg
+	}
+	cmd.PersistentFlags().StringVar(&o.dbgContainerImage, "dbg-image", defaultImage, "default dbg container image")
+
 	o.configFlags.AddFlags(cmd.PersistentFlags())
 
 	cmd.AddCommand(

@@ -11,6 +11,23 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+var (
+	redirectExample = `
+	Redirect incoming our outgoing connections of pod locally. If redirecting incoming connections,
+	and no ports are specified, redirects will be set for ports in "listen" state.
+
+	Examples:
+
+	Redirect outgoing connections to ports 15010 15012 15014 to localhost, from a pod with the label 
+	app=productpage in the namespace bookinfo.
+
+	%[1]s redir -l app=productpage -n bookinfo --outgoing 15010 15012 15014
+
+	Redirect all listening ports from an istiod pod to localhost:
+	%[1]s redir -l app=istiod -n istio-system
+`
+)
+
 type portPair struct {
 	localPort  uint16
 	remotePort uint16
@@ -40,7 +57,7 @@ func NewCmdRedir(diagOptions *DiagOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "redir podport:localport",
 		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(diagExample, "kubectl"),
+		Example:      fmt.Sprintf(redirectExample, "kubectl diag"),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {
