@@ -13,7 +13,6 @@ import (
 	ps "github.com/mitchellh/go-ps"
 	"github.com/vishvananda/netlink/nl"
 	"go.uber.org/multierr"
-	"golang.org/x/sys/unix"
 )
 
 type inodeAndPort struct {
@@ -149,7 +148,7 @@ func (s *Socket) deserialize(b []byte) error {
 	s.ID.SourcePort = networkOrder.Uint16(rb.Next(2))
 	s.ID.DestinationPort = networkOrder.Uint16(rb.Next(2))
 
-	if s.Family == unix.AF_INET6 {
+	if s.Family == syscall.AF_INET6 {
 		s.ID.Source, _ = netip.AddrFromSlice(rb.Next(16))
 		s.ID.Destination, _ = netip.AddrFromSlice(rb.Next(16))
 	} else {
