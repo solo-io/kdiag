@@ -10,4 +10,6 @@ var (
 	VersionPrerelease = "dev"
 
 	Commit = "HEAD"
+
+	ImageRepo = "ghcr.io/solo-io/kdiag"
 )

@@ -25,6 +25,10 @@ jobs:
         with:
           image: docker.io/tonistiigi/binfmt:qemu-v6.2.0
           platforms: linux/arm64
+      - name: Login to Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+          docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:

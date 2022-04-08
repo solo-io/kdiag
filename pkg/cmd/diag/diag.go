@@ -86,7 +86,7 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 		Version: versionStr(),
 	}
 
-	defaultImage := "ghcr.io/solo-io/kdiag:" + version.Version
+	defaultImage := version.ImageRepo + ":" + version.Version
 	if envImg := os.Getenv("KUBECTL_PLUGINS_LOCAL_FLAG_DBG_IMAGE"); len(envImg) != 0 {
 		defaultImage = envImg
 	}
