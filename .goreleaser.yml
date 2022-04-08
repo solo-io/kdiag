@@ -51,7 +51,7 @@ changelog:
 dockers:
   - use: buildx
     image_templates:
-    - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-amd64'
+    - 'ghcr.io/solo-io/kdiag:{{ .Version }}-amd64'
     dockerfile: Dockerfile.release
     goos: linux
     goarch: amd64
@@ -68,7 +68,7 @@ dockers:
     - "--platform=linux/amd64"
   - use: buildx
     image_templates:
-    - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-arm64v8'
+    - 'ghcr.io/solo-io/kdiag:{{ .Version }}-arm64v8'
     dockerfile: Dockerfile.release
     goos: linux
     goarch: arm64
@@ -85,7 +85,7 @@ dockers:
     - "--platform=linux/arm64/v8"
 docker_manifests:
   # https://goreleaser.com/customization/docker_manifest/
-  - name_template: 'ghcr.io/solo-io/kdiag:{{ .Tag }}'
+  - name_template: 'ghcr.io/solo-io/kdiag:{{ .Version }}'
     image_templates:
-      - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-amd64'
-      - 'ghcr.io/solo-io/kdiag:{{ .Tag }}-arm64v8'
+      - 'ghcr.io/solo-io/kdiag:{{ .Version }}-amd64'
+      - 'ghcr.io/solo-io/kdiag:{{ .Version }}-arm64v8'

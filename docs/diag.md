@@ -2,14 +2,6 @@
 
 View or set the current Diag
 
-### Examples
-
-```
-
-	kubectl diag --namespace=default diag port-redirect mypod 8080:80
-
-```
-
 ### Options
 
 ```

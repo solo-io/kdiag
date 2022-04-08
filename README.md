@@ -1,90 +1,89 @@
 Various Diagnostics and Debug Tooling.
 
-Set of tools to make it easier to develop service in kubernetes. Especially server / control planes.
+Set of tools to make it easier to develop service in kubernetes. Especially servers / control planes.
 
 Examples:
 
-start a shell with debug tools:
--> kubectl diag shell --pod mypod
+Reverse port forward - redirect traffic pod's port 8080 to local port 8089
 
-the reverse of port forward - redirect traffic from the pod locally
--> kubectl diag port-redirect mypod 8080:80
-
-collect flame graph!
--> kubectl diag pprof -c container mypod
-
-display useful debug info: process, who listens on what port, what pods are connected to here
--> kubectl diag stats mypod
-
-start dlv session:
--> kubectl diag debug-go mypod
-
-copy files:
--> kubectl diag cp mypod:foo .
-
-forward all ports from all pods in the namespace / pod
--> kubectl diag auto-port-forward -n foo
-
-```
-# mkdir /hostfs; (cd /proc/1/root; mount --bind . /hostfs)
-ln -s /proc/1/root /hostfs
+```sh
+kubectl diag redir --pod mypod 8080:8089
 ```
 
-k diag log-exec
+Reverse port forward - redirect all the ports the pod listens on, to localhost.
 
-k diag log-exec pod pod2 -- curl localhost:8090
-k diag log-snapshot pod pod2 -- k exec pod2 curl localhost:8090
-
-
-cpu-profile:
-get pprof cpu dump (based on annotoation)
-get envoy cpu dump
-
-
-
-# scaffold with
-https://github.com/kubernetes/sample-cli-plugin/blob/master/pkg/cmd/ns.go
-
-
-https://gperftools.github.io/gperftools/cpuprofile.html
-
-https://docs.google.com/presentation/d/10JmeisHsug-7XCB5Ym1HPYoeKLU_r9MOSNNPGWAteKg/preview?pru=AAABf-EPQ3o*Jin1U1-U9oS0IXI9FRHpFg#slide=id.g5218f0a929_0_0
-
-
-# Example
-
-## Local istio debug
-
-To redirect a sidecar to your istio:
-
-start your local pilot discovery, and then:
-
-```shell
-kdiag -l app=productpage -n bookinfo redirect --outgoing 15010 15012 15014
+```sh
+kubectl diag redir --pod mypod
 ```
 
-## Get logs from workloads
+Reverse port forward - redirect outgoing traffic from the pod locally.
 
-# dev/debug:
+```sh
+kubectl diag redir --pod mypod 8080:8080 --outgoing
+```
 
-```shell
+Start a shell with debug tools:
+
+```sh
+kubectl diag shell --pod mypod
+```
+Note that the shell shares the pid namespace with the first container in the pod (can be changed using `-t` flag). This means that you can do `cd /proc/1/root` to access the other container's file system.
+
+# Examples
+
+## Local Istio Debug
+
+To redirect a sidecar to your istio running on your laptop, start your local pilot discovery, and then:
+
+```sh
+kubectl diag -l app=productpage -n bookinfo redirect --outgoing 15010 15012 15014
+```
+# How it works?
+
+To help set-up reverse redirects, we inject an EphemeralContainer to the pod. The container has a process (called manager) that exposes a grpc api.
+This allows it to communicate with the command line.
+
+When doing a reverse port forward, the follow happens:
+- command line sends a request to the manager in the container.
+- manager starts up a listener on a random port
+- manager sets up iptable rules to capture the traffic to the listener it just opened.
+- the manager starts another listener on another random port.
+- when a connection arrive in the first listener, the manager sends a message to the commandline with the port of the second listener.
+- the command line then starts a port forward to that second listener's port, and connects to the local port. and bridges these two connections
+- the manager accepts the connection on the second listener from the command line, and bridges the two connections it has (this one, and the one from the first listener).
+- that's it!
+
+
+# Dev/Debug:
+
+## Iterating locally with kind
+```sh
+make create-test-env
+# or, after the first time:
+make reload-test-env
+
+go run . shell -l app=curl
+```
+
+## Iterating with a remote cluster
+
+This shows how to query the debug container with grpcurl
+
+```sh
+# clean slate
 kubectl delete pod -n istio-system -l app=istiod
 
-IMG=gcr.io/solo-test-236622/kdiag:dev
+# push updated image to a repo that you control, and the cluster can access
+IMG=myrepo.example.com/kdiag:dev
 make docker-build IMG=${IMG}
 docker push ${IMG}
 
+# run manage command, that just starts the ephemeral container
 CONTAINER=$(go run . -l app=istiod -n istio-system --dbg-image ${IMG} --pull-policy=Always manage|cut -d' ' -f1)
+# get the manager port form the logs
 PORT=$(kubectl logs -n istio-system deploy/istiod -c ${CONTAINER}|head -1|rev|cut -d: -f1|rev)
+# portforward to that port
 kubectl port-forward -n istio-system deploy/istiod 8087:${PORT} &
-
+# query it with grpc curl
 grpcurl -plaintext localhost:8087 kdiag.solo.io.Manager.Ps
-
-kubectl logs -n istio-system deploy/istiod -c ${CONTAINER}
-
-
 ```
-
-# test krew bot
-
- docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.42 krew-release-bot template --tag v0.0.1 --template-file /tmp/template-file.yaml

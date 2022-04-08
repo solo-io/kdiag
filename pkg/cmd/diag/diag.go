@@ -18,10 +18,6 @@ import (
 )
 
 var (
-	diagExample = `
-	%[1]s diag --namespace=default diag port-redirect mypod 8080:80
-`
-
 	errNoContext = fmt.Errorf("no context is currently set, use %q to select a new one", "kubectl config use-context <context>")
 )
 
@@ -60,6 +56,14 @@ func NewDiagOptions(streams genericclioptions.IOStreams) *DiagOptions {
 	}
 }
 
+func versionStr() string {
+
+	if len(version.VersionPrerelease) > 0 {
+		return fmt.Sprintf("%s-%s %s", version.Version, version.VersionPrerelease, version.Commit)
+	}
+	return fmt.Sprintf("%s %s", version.Version, version.Commit)
+}
+
 // NewCmdDiag provides a cobra command wrapping DiagOptions
 func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewDiagOptions(streams)
@@ -67,7 +71,6 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "diag [new-Diag] [flags]",
 		Short:             "View or set the current Diag",
-		Example:           fmt.Sprintf(diagExample, "kubectl"),
 		SilenceUsage:      true,
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -80,9 +83,8 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 			}
 			return nil
 		},
+		Version: versionStr(),
 	}
-
-	cmd.Version = version.Version
 
 	defaultImage := "ghcr.io/solo-io/kdiag:" + version.Version
 	if envImg := os.Getenv("KUBECTL_PLUGINS_LOCAL_FLAG_DBG_IMAGE"); len(envImg) != 0 {
