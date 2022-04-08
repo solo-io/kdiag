@@ -4,6 +4,8 @@ Set of tools to make it easier to develop service in kubernetes. Especially serv
 
 Note: most of the tools here (except for logs) require kubernetes 1.23+.
 
+To install, add kubectl-diag to your PATH; krew install coming soon.
+
 Examples:
 
 Reverse port forward - redirect traffic pod's port 8080 to local port 8089
