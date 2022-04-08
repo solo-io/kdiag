@@ -2,6 +2,8 @@ Various Diagnostics and Debug Tooling.
 
 Set of tools to make it easier to develop service in kubernetes. Especially servers / control planes.
 
+Note: most of the tools here (except for logs) require kubernetes 1.23+.
+
 Examples:
 
 Reverse port forward - redirect traffic pod's port 8080 to local port 8089
