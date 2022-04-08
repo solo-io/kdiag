@@ -19,19 +19,12 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.18
-      - uses: engineerd/setup-kind@v0.5.0
+      - name: Set up QEMU
+        id: qemu
+        uses: docker/setup-qemu-action@v1
         with:
-          version: "v0.12.0"
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          version: '3.9.1'
-      - name: Pre checks
-        run: |
-          ./ci/precheck.sh
-      - name: Tests
-        run: |
-          ./ci/do_ci.sh
+          image: docker.io/tonistiigi/binfmt:qemu-v6.2.0
+          platforms: linux/arm64
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
