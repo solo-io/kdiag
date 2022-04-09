@@ -4,6 +4,8 @@ Set of tools to make it easier to develop service in kubernetes. Especially serv
 
 Note: most of the tools here (except for logs) require kubernetes 1.23+.
 
+Note: This software is beta quality. it seems to work, but there are definitely some bugs lurking around.
+
 To install, add kubectl-diag to your PATH; krew install coming soon.
 
 Examples:
