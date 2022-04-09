@@ -2,8 +2,9 @@
 # Image URL to use all building/pushing image targets
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse HEAD)
-IMG ?= ghcr.io/solo-io/kdiag:$(VERSION)
-LDFLAGS := "-X github.com/solo-io/kdiag/pkg/version.Version=$(VERSION) -X github.com/solo-io/kdiag/pkg/version.Commit=$(COMMIT)"
+REPO ?= ghcr.io/solo-io/kdiag
+IMG ?= $(REPO):$(VERSION)
+LDFLAGS := "-X github.com/solo-io/kdiag/pkg/version.Version=$(VERSION) -X github.com/solo-io/kdiag/pkg/version.ImageRepo=$(REPO) -X github.com/solo-io/kdiag/pkg/version.Commit=$(COMMIT)"
 
 .PHONY: all
 all: docker-build

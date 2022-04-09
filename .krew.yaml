@@ -6,10 +6,10 @@ spec:
   version: {{ .TagName }}
   homepage: https://github.com/solo-io/kdiag
   platforms:
-  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
+  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/kubectl-diag_{{.TagName}}_darwin_amd64.tar.gz" .TagName }}
     bin: kubectl-diag
     files:
-    - from: kubectl-diag-darwin
+    - from: kubectl-diag
       to: kubectl-diag
     - from: LICENSE
       to: .
@@ -17,7 +17,7 @@ spec:
       matchLabels:
         os: darwin
         arch: amd64
-  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
+  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/kubectl-diag_{{.TagName}}_darwin_arm64.tar.gz" .TagName }}
     bin: kubectl-diag
     files:
     - from: kubectl-diag-darwin-arm64
@@ -28,7 +28,7 @@ spec:
       matchLabels:
         os: darwin
         arch: arm64
-  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
+  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/kubectl-diag_{{.TagName}}_linux_amd64.tar.gz" .TagName }}
     bin: kubectl-diag
     files:
     - from: kubectl-diag
@@ -39,10 +39,10 @@ spec:
       matchLabels:
         os: linux
         arch: amd64
-  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/ksniff.zip" .TagName }}
+  - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/kubectl-diag_{{.TagName}}_windows_amd64.tar.gz" .TagName }}
     bin: kubectl-diag.exe
     files:
-    - from: kubectl-diag-windows
+    - from: kubectl-diag.exe
       to: kubectl-diag.exe
     - from: LICENSE
       to: .
@@ -50,13 +50,11 @@ spec:
       matchLabels:
         os: windows
         arch: amd64
-  shortDescription: Start a remote packet capture on pods using tcpdump and wireshark
+  shortDescription: Diagnostics tools for kubernetes developers.
   caveats: |
-    This plugin needs the following programs:
-    * wireshark (optional, used for live capture)
+    This uses high privilege ephemeral containers, and not suited for production.
   description: |
-    When working with micro-services, many times it's very helpful to get a capture of the network
-    activity between your micro-service and it's dependencies.
-
-    ksniff use kubectl to upload a statically compiled tcpdump binary to your pod and redirecting it's
-    output to your local Wireshark for smooth network debugging experience.
+    When working with systems that span multiple micro-services, it can be hard to get a local setup
+    working in-order to debug it. This plugin has a set of tools to assist you with that. Redirecting traffic
+    from a pod to your laptop, so you can only run the components you care about locally. Viewing logs
+    from multiple pods at the same time, so you can see how the system responds on both ends.
