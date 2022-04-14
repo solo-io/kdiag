@@ -8,7 +8,7 @@ Note: This software is beta quality. it seems to work, but there are definitely 
 
 To install, add kubectl-diag to your PATH; krew install coming soon.
 
-Examples:
+# Examples
 
 Reverse port forward - redirect traffic pod's port 8080 to local port 8089
 
@@ -35,7 +35,7 @@ kubectl diag shell --pod mypod
 ```
 Note that the shell shares the pid namespace with the first container in the pod (can be changed using `-t` flag). This means that you can do `cd /proc/1/root` to access the other container's file system.
 
-# Examples
+# Recipes
 
 ## Local Istio Debug
 
@@ -44,6 +44,9 @@ To redirect a sidecar to your istio running on your laptop, start your local pil
 ```sh
 kubectl diag -l app=productpage -n bookinfo redirect --outgoing 15010 15012 15014
 ```
+
+Get envoy's cpu profile
+
 # How it works?
 
 To help set-up reverse redirects, we inject an EphemeralContainer to the pod. The container has a process (called manager) that exposes a grpc api.
@@ -54,11 +57,10 @@ When doing a reverse port forward, the follow happens:
 - manager starts up a listener on a random port
 - manager sets up iptable rules to capture the traffic to the listener it just opened.
 - the manager starts another listener on another random port.
-- when a connection arrive in the first listener, the manager sends a message to the commandline with the port of the second listener.
+- when a connection arrive in the first listener, the manager sends a message to the command-line with the port of the second listener.
 - the command line then starts a port forward to that second listener's port, and connects to the local port. and bridges these two connections
 - the manager accepts the connection on the second listener from the command line, and bridges the two connections it has (this one, and the one from the first listener).
 - that's it!
-
 
 # Dev/Debug:
 

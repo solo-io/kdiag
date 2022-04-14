@@ -21,6 +21,7 @@ builds:
     binary: '{{ .ProjectName }}'
   -
     id: manager
+    main: ./cmd/srv
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - -trimpath #removes all file system paths from the compiled executable
