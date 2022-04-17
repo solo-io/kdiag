@@ -20,7 +20,7 @@ spec:
   - {{ addURIAndSha "https://github.com/solo-io/kdiag/releases/download/{{ .TagName }}/kubectl-diag_{{.TagName}}_darwin_arm64.tar.gz" .TagName }}
     bin: kubectl-diag
     files:
-    - from: kubectl-diag-darwin-arm64
+    - from: kubectl-diag
       to: kubectl-diag
     - from: LICENSE
       to: .
