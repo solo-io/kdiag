@@ -108,6 +108,7 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 		if err != nil {
 			return err
 		}
+		// wait until user command exits
 		cmd.Wait()
 	} else {
 		// wait until user interrupts us.
@@ -118,6 +119,7 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	cancel()
 	// drain pending logs
 	wg.Wait()
+	// close channel so print loop exits.
 	close(logEntries)
 
 	return nil
