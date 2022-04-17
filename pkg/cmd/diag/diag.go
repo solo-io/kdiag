@@ -69,8 +69,8 @@ func NewCmdDiag(streams genericclioptions.IOStreams) *cobra.Command {
 	o := NewDiagOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:               "diag [new-Diag] [flags]",
-		Short:             "View or set the current Diag",
+		Use:               "diag",
+		Short:             "",
 		SilenceUsage:      true,
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

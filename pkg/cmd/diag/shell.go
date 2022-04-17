@@ -49,8 +49,8 @@ func NewCmdShell(diagOptions *DiagOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:          "shell",
-		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(shellExample, "kubectl diag"),
+		Short:        "start a debug shell to the pod with an ephemeral container",
+		Example:      fmt.Sprintf(shellExample, CommandName()),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {

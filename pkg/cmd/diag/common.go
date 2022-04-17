@@ -2,7 +2,10 @@ package diag
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
@@ -47,4 +50,11 @@ func ValidateSinglePodFlags(o *DiagOptions) error {
 	}
 
 	return nil
+}
+
+func CommandName() string {
+	if strings.HasPrefix(filepath.Base(os.Args[0]), "kubectl-") {
+		return "kubectl diag"
+	}
+	return "kdiag"
 }

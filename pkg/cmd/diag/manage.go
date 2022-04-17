@@ -35,7 +35,7 @@ func NewCmdManage(diagOptions *DiagOptions) *cobra.Command {
 		Use: "manage",
 		// hide as this command is pretty useless except for debugging
 		Hidden:       true,
-		Short:        "View or set the current Diag",
+		Short:        "Start the ephemeral container to manage a pod",
 		Example:      fmt.Sprintf(manageExample, "kubectl"),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {

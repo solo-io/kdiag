@@ -19,6 +19,12 @@ var (
 	while executing a curl command:
 
 	%[1]s logs -n bookinfo --all -c istio-proxy -- curl http://foo.bar.com
+
+	You can also use the following syntax to get the logs from a specific container.
+	
+	This examples gets the logs from the "istio-proxy" container from all the pods with the app=productpage label
+
+	%[1]s logs -n bookinfo -l app=productpage:istio-proxy -- curl http://foo.bar.com
 `
 )
 
@@ -50,8 +56,8 @@ func NewCmdLogs(diagOptions *DiagOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:          "logs",
-		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(logExample, "kubectl diag"),
+		Short:        "View logs from multiple containers",
+		Example:      fmt.Sprintf(logExample, CommandName()),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {

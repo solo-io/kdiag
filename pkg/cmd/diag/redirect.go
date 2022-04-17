@@ -56,8 +56,8 @@ func NewCmdRedir(diagOptions *DiagOptions) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:          "redir podport:localport",
-		Short:        "View or set the current Diag",
-		Example:      fmt.Sprintf(redirectExample, "kubectl diag"),
+		Short:        "Redirect incoming or outgoing connections of pod locally",
+		Example:      fmt.Sprintf(redirectExample, CommandName()),
 		SilenceUsage: true,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := o.Complete(c, args); err != nil {
