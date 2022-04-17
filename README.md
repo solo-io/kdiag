@@ -22,10 +22,10 @@ Reverse port forward - redirect all the ports the pod listens on, to localhost.
 kubectl diag redir --pod mypod
 ```
 
-Reverse port forward - redirect outgoing traffic from the pod locally.
+Reverse port forward - redirect outgoing traffic from the port 8080 on the pod pod to local port 8080 (in outgoing mode, ports must be specified).
 
 ```sh
-kubectl diag redir --pod mypod 8080:8080 --outgoing
+kubectl diag redir --pod mypod 8080 --outgoing
 ```
 
 Start a shell with debug tools:
@@ -43,6 +43,15 @@ To redirect a sidecar to your istio running on your laptop, start your local pil
 
 ```sh
 kubectl diag -l app=productpage -n bookinfo redirect --outgoing 15010 15012 15014
+```
+
+## Get root on a non root container
+
+For example, get a root shell in the istio-proxy container:
+
+```sh
+kubectl diag shell -l app=productpage -t istio-proxy
+nsenter -t 1 -a /bin/bash
 ```
 
 # How it works?
