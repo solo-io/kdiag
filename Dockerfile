@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     lsb-release \
     gdb gcc libc6-dev \
     vim \
-    iproute2 iptables \
+    iproute2 iptables nftables \
     strace \
     && rm -rf /var/lib/apt/lists/*
 

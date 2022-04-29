@@ -31,13 +31,17 @@ int main(int argc, char *argv[]) {
     pid_t pid = 1;
     if (argc == 2) {
         bin = argv[1];
+        ++argv;
     } else if (argc > 2) {
         pid = atoi(argv[1]);
-        bin = argv[2];
+        ++argv;
+        bin = argv[1];
+        ++argv;
     }
 
 #if DEBUG
     printf("getting pid %u\n", pid);
+    printf("open bin %s\n", bin);
 #endif
 
     // open the file descriptor for the binary. we want it as an FD, so we can use it
@@ -49,6 +53,8 @@ int main(int argc, char *argv[]) {
     }
 
     // Get the pid that we want to enter
+    // this is a newer syscall, and we can probably workaround using it,
+    // but it does simplify the code as we can specify multiple namespaces in setns when we use it.
     int procfd = syscall(SYS_pidfd_open, pid, 0);
     if (procfd < 0){
         perror("pidfd_open");
@@ -64,8 +70,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Done with prep work.
+
     // move us to the mount namespace of the target process
-    if (setns(procfd, CLONE_NEWNET) != 0) {
+    int nstypes = CLONE_NEWNET|CLONE_NEWPID|CLONE_NEWNS|CLONE_NEWCGROUP|CLONE_NEWUTS|CLONE_NEWCGROUP;
+    if (setns(procfd, nstypes) != 0) {
         perror("setns");
         return 1;
     }
@@ -87,8 +96,7 @@ int main(int argc, char *argv[]) {
 
     // use execveat to execute the binary. This still works even though the binary doesn't exist
     // in our file system, because we already have an fd open to it.
-    char *const argv2[] = {bin, NULL};
-    int ret = execveat(bash_fd, "", argv2, NULL, AT_EMPTY_PATH);
+    int ret = execveat(bash_fd, "", argv, NULL, AT_EMPTY_PATH);
     if (ret != 0) {
         perror("execveat");
         return 1;
