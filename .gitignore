@@ -1,3 +1,5 @@
 bin/
 .vscode/
 dist
+scratch-shell/build/
+scratch-shell/built/

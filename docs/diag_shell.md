@@ -1,6 +1,6 @@
 ## diag shell
 
-View or set the current Diag
+start a debug shell to the pod with an ephemeral container
 
 ```
 diag shell [flags]
@@ -10,16 +10,20 @@ diag shell [flags]
 
 ```
 
-	Start a shell to our ephemeral container. it has various debugging tools.
+	Start a shell to a pod. Unlike regular "kubectl exec" this command works even in distroless and
+	scratch containers. It does so by using standalone busybox ash binary as the shell. This means
+	that the shell is more limited, but works on any container as long as "/proc" is mounted.
+	Note that this command needs linux kernel >= 5.3 to work. though this requirement may be relaxed
+	in the future if needed.
+
+	Optionally, you can start a shell to our ephemeral container (with --debug-shell flag). it has various debugging tools. 
+	this is essentially a shortcut to "kubectl debug" with our image, and mainly useful for development purposes.
 
 	For example:
 
-	kubectl diag -l app=productpage -n bookinfo -t istio-proxy shell
+	kdiag -l app=productpage -n bookinfo -t istio-proxy shell
 
-	Start a shell targeting the istio-proxy container in the productpage pod. This means that you 
-	will share the same pid namespace as the istio-proxy container. To access the file-system
-	of the istio-proxy container, go to "/proc/1/root".
-	You can also use "nsenter --mount=/proc/1/ns/mnt" to get a shell to the target container.
+	Start a shell targeting the istio-proxy container in the productpage pod.
 
 	Note: a container is only created once, and may have been created from the previous commands. so specifying
 	a different target the second time will have no effect.
@@ -29,6 +33,7 @@ diag shell [flags]
 ### Options
 
 ```
+      --debug-shell          start a debug shell in the ephemeral container instead of the pod's container
   -h, --help                 help for shell
   -l, --labels string        select a pod by label. an arbitrary pod will be selected, with preference to newer pods
       --pod string           podname to diagnose
@@ -61,5 +66,5 @@ diag shell [flags]
 
 ### SEE ALSO
 
-* [diag](diag.md)	 - View or set the current Diag
+* [diag](diag.md)	 - 
 

@@ -21,12 +21,11 @@ COPY Makefile Makefile
 # Build
 RUN GOOS=linux GOARCH="${TARGETPLATFORM##linux/}" make build-manager
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM --platform=${TARGETPLATFORM} docker.io/library/ubuntu:20.04
-ARG VERSION
+FROM --platform=${TARGETPLATFORM} docker.io/library/ubuntu:22.04
 
 # Install dependencies
+# note: we can't use linux-headers-$(uname -r), as we don't know the host kernel will match.
+# we just need some version of the headers so we can build busybox.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
@@ -34,8 +33,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdb gcc libc6-dev \
     vim \
     iproute2 iptables nftables \
-    strace \
+    strace make bzip2 \
+    linux-libc-dev linux-headers-5.15.0-27-generic \
     && rm -rf /var/lib/apt/lists/*
+
+# RUN ln -s /usr/include/asm-generic /usr/include/asm
+RUN ln -s /usr/include/*-linux-gnu/asm/ /usr/include/asm
+
+COPY scratch-shell/.config scratch-shell/build.sh scratch-shell/enter.c /scratch-shell/
+RUN cd /scratch-shell && ./build.sh && \
+    cp ./built/ash /usr/local/bin && \
+    gcc ./enter.c -o /usr/local/bin/enter
 
 WORKDIR /
 

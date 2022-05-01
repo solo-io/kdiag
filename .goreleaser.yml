@@ -67,6 +67,10 @@ dockers:
     - "--build-arg=VERSION={{.Version}}"
     - "--build-arg=COMMIT={{.Commit}}"
     - "--platform=linux/amd64"
+    extra_files:
+    - ./scratch-shell/.config
+    - ./scratch-shell/build.sh
+    - ./scratch-shell/enter.c
   - use: buildx
     image_templates:
     - 'ghcr.io/solo-io/kdiag:{{ .Version }}-arm64v8'
@@ -84,6 +88,11 @@ dockers:
     - "--build-arg=VERSION={{.Version}}"
     - "--build-arg=COMMIT={{.Commit}}"
     - "--platform=linux/arm64/v8"
+    extra_files:
+    - ./scratch-shell/.config
+    - ./scratch-shell/build.sh
+    - ./scratch-shell/enter.c
+
 docker_manifests:
   # https://goreleaser.com/customization/docker_manifest/
   - name_template: 'ghcr.io/solo-io/kdiag:{{ .Version }}'

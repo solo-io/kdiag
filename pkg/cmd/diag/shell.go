@@ -14,16 +14,20 @@ import (
 
 var (
 	shellExample = `
-	Start a shell to our ephemeral container. it has various debugging tools.
+	Start a shell to a pod. Unlike regular "kubectl exec" this command works even in distroless and
+	scratch containers. It does so by using standalone busybox ash binary as the shell. This means
+	that the shell is more limited, but works on any container as long as "/proc" is mounted.
+	Note that this command needs linux kernel >= 5.3 to work. though this requirement may be relaxed
+	in the future if needed.
+
+	Optionally, you can start a shell to our ephemeral container (with --debug-shell flag). it has various debugging tools. 
+	this is essentially a shortcut to "kubectl debug" with our image, and mainly useful for development purposes.
 
 	For example:
 
 	%[1]s -l app=productpage -n bookinfo -t istio-proxy shell
 
-	Start a shell targeting the istio-proxy container in the productpage pod. This means that you 
-	will share the same pid namespace as the istio-proxy container. To access the file-system
-	of the istio-proxy container, go to "/proc/1/root".
-	You can also use "nsenter --mount=/proc/1/ns/mnt" to get a shell to the target container.
+	Start a shell targeting the istio-proxy container in the productpage pod.
 
 	Note: a container is only created once, and may have been created from the previous commands. so specifying
 	a different target the second time will have no effect.
@@ -34,6 +38,7 @@ var (
 // the current context on a user's KUBECONFIG
 type ShellOptions struct {
 	*DiagOptions
+	debugShell bool
 }
 
 // NewShellOptions provides an instance of ShellOptions with default values
@@ -67,6 +72,8 @@ func NewCmdShell(diagOptions *DiagOptions) *cobra.Command {
 		},
 	}
 	AddSinglePodFlags(cmd, o.DiagOptions)
+	cmd.Flags().BoolVar(&o.debugShell, "debug-shell", false, "start a debug shell in the ephemeral container instead of the pod's container")
+
 	return cmd
 }
 
@@ -111,9 +118,15 @@ func (o *ShellOptions) Run() error {
 	// true
 	o.ErrOut = nil
 
+	// run ASH in the namespaces of pid 1, as pid 1 belongs to the target container.
+	cmd := []string{"/usr/local/bin/enter", "1", "/usr/local/bin/ash"}
+	if o.debugShell {
+		cmd = []string{"/bin/bash"}
+	}
+
 	execRequest.VersionedParams(&corev1.PodExecOptions{
 		Container: mgr.ContainerName(),
-		Command:   []string{"/bin/bash"},
+		Command:   cmd,
 		Stdin:     true,
 		Stdout:    true,
 		Stderr:    o.ErrOut != nil,

@@ -28,7 +28,7 @@ Reverse port forward - redirect outgoing traffic from the port 8080 on the pod p
 kubectl diag redir --pod mypod 8080 --outgoing
 ```
 
-Start a shell with debug tools:
+Start a busybox shell (works even on scratch containers!):
 
 ```sh
 kubectl diag shell --pod mypod

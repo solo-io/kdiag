@@ -1,6 +1,6 @@
 ## diag
 
-View or set the current Diag
+
 
 ### Options
 
@@ -28,7 +28,7 @@ View or set the current Diag
 
 ### SEE ALSO
 
-* [diag logs](diag_logs.md)	 - View or set the current Diag
-* [diag redir](diag_redir.md)	 - View or set the current Diag
-* [diag shell](diag_shell.md)	 - View or set the current Diag
+* [diag logs](diag_logs.md)	 - View logs from multiple containers
+* [diag redir](diag_redir.md)	 - Redirect incoming or outgoing connections of pod locally
+* [diag shell](diag_shell.md)	 - start a debug shell to the pod with an ephemeral container
 

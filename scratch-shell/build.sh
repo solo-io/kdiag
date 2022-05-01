@@ -3,6 +3,13 @@
 set -e
 set -x
 
+# build standalone static busybox.
+# based partly on:
+# https://github.com/robxu9/bash-static
+# and notes from https://www.openwall.com/lists/musl/2014/08/08/13
+# we use busybox ash instead of bash as ash can be built in "standalone" mode where all the 
+# other busybox tools are available magically.
+
 target=linux
 arch=x86_64
 
@@ -18,11 +25,13 @@ fi
 pushd build
 
 # pre-prepare gpg for verificaiton
-echo "= preparing gpg"
-GNUPGHOME="$(mktemp -d)"
-export GNUPGHOME
-# public key for musl
-gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 836489290BB6B70F99FFDA0556BCDB593020450F
+if which gpg 2> /dev/null; then
+  echo "= preparing gpg"
+  GNUPGHOME="$(mktemp -d)"
+  export GNUPGHOME
+  # public key for musl
+  gpg --batch --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 836489290BB6B70F99FFDA0556BCDB593020450F
+fi
 
 # download tarballs
 echo "= downloading busybox"
@@ -31,6 +40,11 @@ busybox_dir="busybox-${busybox_version}"
 if [ ! -e "${busybox_dir}" ]; then
   #https://github.com/mirror/busybox
   curl -LO "https://github.com/mirror/busybox/archive/refs/tags/${busybox_version}.tar.gz"
+
+  if [ $(sha256sum ./1_35_0.tar.gz) -neq "7d563cbce35f12f51afff7d93c1f3adde3fbb4dca3b7dcc34773d6bde3440710  ./1_35_0.tar.gz" ]; then
+    echo "= invalid checksum"
+    exit 1
+  fi
 
   echo "= extracting busybox"
   tar -xzf "${busybox_version}.tar.gz"
@@ -47,8 +61,16 @@ else
   if [ ! -e "${musl_dir}" ]; then
     echo "= downloading musl"
     curl -LO https://musl.libc.org/releases/musl-${musl_version}.tar.gz
-    curl -LO https://musl.libc.org/releases/musl-${musl_version}.tar.gz.asc
-    gpg --batch --verify musl-${musl_version}.tar.gz.asc musl-${musl_version}.tar.gz
+
+    if [ $(sha256sum musl-${musl_version}.tar.gz) -neq "7d5b0b6062521e4627e099e4c9dc8248d32a30285e959b7eecaa780cf8cfd4a4  musl-1.2.3.tar.gz" ]; then
+      echo "= invalid checksum"
+      exit 1
+    fi
+
+    if which gpg 2> /dev/null; then
+      curl -LO https://musl.libc.org/releases/musl-${musl_version}.tar.gz.asc
+      gpg --batch --verify musl-${musl_version}.tar.gz.asc musl-${musl_version}.tar.gz
+    fi
     echo "= extracting musl"
     tar -xf musl-${musl_version}.tar.gz
   fi
@@ -80,7 +102,7 @@ else
   export PATH=${musl_install_dir}/bin:$PATH
 fi
 
-if [ ! -e ${busybox_dir}/busybox]; then
+if [ ! -e "${busybox_dir}/busybox" ]; then
   export CFLAGS="-static"
   echo export CFLAGS="-static"
 
@@ -91,7 +113,7 @@ if [ ! -e ${busybox_dir}/busybox]; then
   cp ${script_dir}/.config ${busybox_dir}
 
   pushd ${busybox_dir}
-  make
+  make busybox
   popd # ${busybox_dir}
 fi
 popd # build

@@ -1,6 +1,6 @@
 ## diag redir
 
-View or set the current Diag
+Redirect incoming or outgoing connections of pod locally
 
 ```
 diag redir podport:localport [flags]
@@ -18,10 +18,10 @@ diag redir podport:localport [flags]
 	Redirect outgoing connections to ports 15010 15012 15014 to localhost, from a pod with the label 
 	app=productpage in the namespace bookinfo.
 
-	kubectl diag redir -l app=productpage -n bookinfo --outgoing 15010 15012 15014
+	kdiag redir -l app=productpage -n bookinfo --outgoing 15010 15012 15014
 
 	Redirect all listening ports from an istiod pod to localhost:
-	kubectl diag redir -l app=istiod -n istio-system
+	kdiag redir -l app=istiod -n istio-system
 
 ```
 
@@ -61,5 +61,5 @@ diag redir podport:localport [flags]
 
 ### SEE ALSO
 
-* [diag](diag.md)	 - View or set the current Diag
+* [diag](diag.md)	 - 
 

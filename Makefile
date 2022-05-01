@@ -26,6 +26,10 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+.PHONY: 
+scratch-shell/built/enter: scratch-shell/enter.c
+	gcc $< -o $@
+
 .PHONY: docker-build
 docker-build:
 	DOCKER_BUILDKIT=1 docker build -f Dockerfile --tag ${IMG} --build-arg=VERSION=$(VERSION) --build-arg=COMMIT=$(COMMIT) .

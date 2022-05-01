@@ -1,6 +1,6 @@
 ## diag logs
 
-View or set the current Diag
+View logs from multiple containers
 
 ```
 diag logs [flags]
@@ -15,7 +15,13 @@ diag logs [flags]
 	for example, get all the logs from the "istio-proxy" container in the bookinfo namespace:
 	while executing a curl command:
 
-	kubectl diag logs -n bookinfo --all -c istio-proxy -- curl http://foo.bar.com
+	kdiag logs -n bookinfo --all -c istio-proxy -- curl http://foo.bar.com
+
+	You can also use the following syntax to get the logs from a specific container.
+	
+	This examples gets the logs from the "istio-proxy" container from all the pods with the app=productpage label
+
+	kdiag logs -n bookinfo -l app=productpage:istio-proxy -- curl http://foo.bar.com
 
 ```
 
@@ -54,5 +60,5 @@ diag logs [flags]
 
 ### SEE ALSO
 
-* [diag](diag.md)	 - View or set the current Diag
+* [diag](diag.md)	 - 
 
