@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gdb gcc libc6-dev \
     vim \
     iproute2 iptables nftables \
-    strace make bzip2 \
+    strace make \
     linux-libc-dev linux-headers-5.15.0-27-generic \
     && rm -rf /var/lib/apt/lists/*
 
