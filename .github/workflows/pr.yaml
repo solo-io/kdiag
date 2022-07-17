@@ -33,3 +33,9 @@ jobs:
       - name: Tests
         run: |
           ./ci/do_ci.sh
+      - name: Build images
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --snapshot --rm-dist --debug
