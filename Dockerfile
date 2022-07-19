@@ -22,7 +22,7 @@ COPY Makefile Makefile
 # Build
 RUN GOOS=linux GOARCH="${TARGETPLATFORM##linux/}" make build-manager
 
-FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:40862e9
+FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:60ce9e4
 
 
 WORKDIR /
