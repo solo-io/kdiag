@@ -26,7 +26,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
         with:
-          version: '3.9.1'
+          version: '3.21.2'
       - name: Pre checks
         run: |
           ./ci/precheck.sh
