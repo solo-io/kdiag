@@ -42,6 +42,14 @@ When doing a reverse port forward, the follow happens:
 - the manager accepts the connection on the second listener from the command line, and bridges the two connections it has (this one, and the one from the first listener).
 - that's it!
 
+## How does the shell command work?
+
+We have a prebuilt busybox standalone `ash` shell. standalone means that it executes commands internally
+without needing the commands to be on the path.
+
+We use a small [nsenter inspired utility](scratch-shell/enter.c) to inject the `ash` shell to your pods namespaces.
+Due to the syscalls we use, this requires linux kernel version 5.3+.
+
 # Iterating locally with kind
 ```sh
 make create-test-env

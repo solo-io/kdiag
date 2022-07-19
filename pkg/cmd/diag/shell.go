@@ -72,7 +72,7 @@ func NewCmdShell(diagOptions *DiagOptions) *cobra.Command {
 		},
 	}
 	AddSinglePodFlags(cmd, o.DiagOptions)
-	cmd.Flags().BoolVar(&o.debugShell, "debug-shell", false, "start a debug shell in the ephemeral container instead of the pod's container")
+	//cmd.Flags().BoolVar(&o.debugShell, "debug-shell", false, "start a debug shell in the ephemeral container instead of the pod's container")
 
 	return cmd
 }

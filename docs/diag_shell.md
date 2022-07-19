@@ -33,7 +33,6 @@ diag shell [flags]
 ### Options
 
 ```
-      --debug-shell          start a debug shell in the ephemeral container instead of the pod's container
   -h, --help                 help for shell
   -l, --labels string        select a pod by label. an arbitrary pod will be selected, with preference to newer pods
       --pod string           podname to diagnose
