@@ -28,11 +28,13 @@ diag logs [flags]
 ### Options
 
 ```
-  -a, --all                  select all pods in the namespace
-  -c, --container string     default container name to use for logs. defaults to first container in the pod
-  -h, --help                 help for logs
-  -l, --labels stringArray   select a pods to watch logs by label. you can use k=v:containername to specify container name
-      --pod stringArray      podname to view logs of. you can use podname:containername to specify container name
+  -a, --all                       select all pods in the namespace
+  -c, --container string          default container name to use for logs. defaults to first container in the pod
+  -d, --drain-duration duration   duration to wait for logs after command exists (default 500ms)
+  -h, --help                      help for logs
+  -l, --labels stringArray        select a pods to watch logs by label. you can use k=v:containername to specify container name
+      --no-color                  Disable color output
+      --pod stringArray           podname to view logs of. you can use podname:containername to specify container name
 ```
 
 ### Options inherited from parent commands
