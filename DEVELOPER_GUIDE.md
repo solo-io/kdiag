@@ -92,3 +92,7 @@ grpcurl -plaintext localhost:8087 kdiag.solo.io.Manager.Ps
 # Test krew bot
 
 docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.43 krew-release-bot template --tag v0.0.5 --template-file /tmp/template-file.yaml
+
+
+# Releasing:
+To release, just push a new tag. go-releaser will create the github release.
