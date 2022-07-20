@@ -2,8 +2,13 @@ package diag
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
+	"time"
 
+	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/samber/lo"
 	"github.com/solo-io/kdiag/pkg/logs"
 	"github.com/spf13/cobra"
@@ -39,6 +44,8 @@ type LogsOptions struct {
 	all            bool
 	containerName  string
 	args           []string
+	drainTime      time.Duration
+	noColor        bool
 
 	podAndContainerNames []logs.PodAndContainerName
 }
@@ -77,7 +84,17 @@ func NewCmdLogs(diagOptions *DiagOptions) *cobra.Command {
 	cmd.Flags().StringArrayVarP(&o.labelSelectors, "labels", "l", nil, "select a pods to watch logs by label. you can use k=v:containername to specify container name")
 	cmd.Flags().BoolVarP(&o.all, "all", "a", false, "select all pods in the namespace")
 	cmd.Flags().StringVarP(&o.containerName, "container", "c", "", "default container name to use for logs. defaults to first container in the pod")
+	cmd.Flags().DurationVarP(&o.drainTime, "drain-duration", "d", time.Second/2, "duration to wait for logs after command exists")
+	cmd.Flags().BoolVar(&o.noColor, "no-color", !isTty(diagOptions.IOStreams.Out), "Disable color output")
+
 	return cmd
+}
+
+func isTty(s io.Writer) bool {
+	if f, ok := s.(*os.File); ok {
+		return isatty.IsTerminal(f.Fd())
+	}
+	return false
 }
 
 // Complete sets all information required for updating the current context
@@ -135,10 +152,14 @@ func (o *LogsOptions) Validate() error {
 // current context based on a provided namespace.
 func (o *LogsOptions) Run() error {
 	printer := logs.MultiLogPrinter{
-		Out:    o.Out,
-		ErrOut: o.ErrOut,
-		In:     o.In,
-		Args:   o.args,
+		Out:          o.Out,
+		ErrOut:       o.ErrOut,
+		In:           o.In,
+		Args:         o.args,
+		LogDrainTime: o.drainTime,
+	}
+	if o.noColor {
+		color.NoColor = true
 	}
 	return printer.PrintLogs(o.ctx, o.clientset.CoreV1().Pods(o.resultingContext.Namespace), o.podAndContainerNames)
 }

@@ -39,9 +39,9 @@ jobs:
         with:
           image: docker.io/tonistiigi/binfmt:qemu-v6.2.0
           platforms: linux/arm64
-      - name: Build images
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --snapshot --rm-dist --debug
+#       - name: Build images
+#         uses: goreleaser/goreleaser-action@v2
+#         with:
+#           distribution: goreleaser
+#           version: latest
+#           args: release --snapshot --rm-dist --debug

@@ -3,8 +3,10 @@ module github.com/solo-io/kdiag
 go 1.18
 
 require (
+	github.com/fatih/color v1.7.0
 	github.com/go-logr/zapr v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
+	github.com/mattn/go-isatty v0.0.3
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.17.0
@@ -60,6 +62,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mattn/go-colorable v0.0.9 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
 	github.com/moby/term v0.0.0-20210610120745-9d4ed1856297 // indirect
