@@ -3,6 +3,7 @@ package logs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -74,9 +75,10 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 				if err != nil {
 					if err != io.EOF {
 						err := fmt.Errorf("failed to read logs: %w", err)
-						logEntries <- logEntry{podName: podName, err: err}
+						logEntries <- logEntry{podName: podName, err: err, done: true}
+					} else {
+						logEntries <- logEntry{podName: podName, done: true}
 					}
-					logEntries <- logEntry{podName: podName, done: true}
 					return
 				}
 
@@ -86,16 +88,17 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 		}(podName.String())
 	}
 
+	printLoopDone := make(chan struct{})
 	go func() {
+		defer close(printLoopDone)
 		for entry := range logEntries {
-			if entry.err != nil {
+			if entry.err != nil && !errors.Is(entry.err, context.Canceled) {
 				fmt.Fprintf(m.ErrOut, "error reading logs for %s: %v\n", entry.podName, entry.err)
-				continue
-			}
-			if entry.done {
+			} else if entry.done {
 				fmt.Fprintf(m.Out, "pod %s is done\n", entry.podName)
+			} else {
+				fmt.Fprintf(m.Out, "%s: %s\n", entry.podName, entry.log)
 			}
-			fmt.Fprintf(m.Out, "%s: %s\n", entry.podName, entry.log)
 		}
 	}()
 
@@ -121,6 +124,6 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	wg.Wait()
 	// close channel so print loop exits.
 	close(logEntries)
-
+	<-printLoopDone
 	return nil
 }

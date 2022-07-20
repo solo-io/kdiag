@@ -65,10 +65,15 @@ nsenter -t 1 -a /bin/bash
 
 ## Log multiple pods at once
 
+When debugging a a request going through the cluster, it can be useful to see the logs of multiple pods as they request
+flow through the cluster.
+
 See your request traverses the mesh:
+For example, this will show the logs of all the `istio-proxy` container in pods in the `bookinfo` namespace.
+It will execute the curl command and then terminate.
 
 ```sh
-TODO
+kubectl diag logs -n bookinfo --all -c istio-proxy -- curl http://foo.bar.com
 ```
 
 

@@ -66,7 +66,7 @@ protoc-gen-go-grpc: ## Download envtest-setup locally if necessary.
 .PHONY: deploy-test-wokrloads
 deploy-test-wokrloads:
 	kubectl create deployment nginx --image=docker.io/library/nginx:1.19@sha256:2275af0f20d71b293916f1958f8497f987b8d8fd8113df54635f2a5915002bf1 || true
-	kubectl expose deploy nginx --port 80 --target-port 80 || true
+	kubectl expose deploy nginx --port 80 --target-port 80 --type=NodePort || true
 	kubectl create deployment curl --image=curlimages/curl@sha256:aa45e9d93122a3cfdf8d7de272e2798ea63733eeee6d06bd2ee4f2f8c4027d7c -- /bin/sh -c "while true; do curl --max-time 2 --head http://nginx; sleep 1; done"|| true
 
 .PHONY: create-test-cluster

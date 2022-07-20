@@ -58,6 +58,9 @@ make reload-test-env
 
 # start a debug shell for example
 go run . shell -l app=curl
+
+# log command for example:
+go run . logs -l app=nginx curl "http://$(kubectl get node kind-control-plane -o jsonpath='{.status.addresses[0].address}'):$(kubectl get service nginx -o jsonpath='{.spec.ports[0].nodePort}')"
 ```
 
 # Iterating with a remote cluster
