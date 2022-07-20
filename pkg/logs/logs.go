@@ -3,12 +3,15 @@ package logs
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/fatih/color"
 	corev1 "k8s.io/api/core/v1"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -35,10 +38,11 @@ func (p *PodAndContainerName) String() string {
 }
 
 type MultiLogPrinter struct {
-	Out    io.Writer
-	ErrOut io.Writer
-	In     io.Reader
-	Args   []string
+	Out          io.Writer
+	ErrOut       io.Writer
+	In           io.Reader
+	Args         []string
+	LogDrainTime time.Duration
 }
 
 // Run lists all available namespaces on a user's KUBECONFIG or updates the
@@ -46,6 +50,8 @@ type MultiLogPrinter struct {
 func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.PodInterface, podNames []PodAndContainerName) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	podNameColor := color.New(color.FgGreen)
 
 	// exec!
 	zero := int64(0)
@@ -74,9 +80,10 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 				if err != nil {
 					if err != io.EOF {
 						err := fmt.Errorf("failed to read logs: %w", err)
-						logEntries <- logEntry{podName: podName, err: err}
+						logEntries <- logEntry{podName: podName, err: err, done: true}
+					} else {
+						logEntries <- logEntry{podName: podName, done: true}
 					}
-					logEntries <- logEntry{podName: podName, done: true}
 					return
 				}
 
@@ -86,16 +93,18 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 		}(podName.String())
 	}
 
+	printLoopDone := make(chan struct{})
 	go func() {
+		defer close(printLoopDone)
 		for entry := range logEntries {
-			if entry.err != nil {
+			if entry.err != nil && !errors.Is(entry.err, context.Canceled) {
 				fmt.Fprintf(m.ErrOut, "error reading logs for %s: %v\n", entry.podName, entry.err)
-				continue
-			}
-			if entry.done {
+			} else if entry.done {
 				fmt.Fprintf(m.Out, "pod %s is done\n", entry.podName)
+			} else {
+				podNameColor.Fprintf(m.Out, "%s:", entry.podName)
+				fmt.Fprintf(m.Out, " %s\n", entry.log)
 			}
-			fmt.Fprintf(m.Out, "%s: %s\n", entry.podName, entry.log)
 		}
 	}()
 
@@ -110,6 +119,10 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 		}
 		// wait until user command exits
 		cmd.Wait()
+		// command done, wait the drain time
+		if m.LogDrainTime != 0 {
+			time.Sleep(m.LogDrainTime)
+		}
 	} else {
 		// wait until user interrupts us.
 		<-ctx.Done()
@@ -121,6 +134,7 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	wg.Wait()
 	// close channel so print loop exits.
 	close(logEntries)
-
+	// wait for print loop to exit
+	<-printLoopDone
 	return nil
 }

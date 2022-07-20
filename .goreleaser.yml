@@ -2,7 +2,6 @@ project_name: kubectl-diag
 env:
   - CGO_ENABLED=0
 builds:
-  # A separated build to run the packer-plugins-check only once for a linux_amd64 binary
   -
     id: kubectl-diag
     mod_timestamp: '{{ .CommitTimestamp }}'

@@ -42,6 +42,14 @@ When doing a reverse port forward, the follow happens:
 - the manager accepts the connection on the second listener from the command line, and bridges the two connections it has (this one, and the one from the first listener).
 - that's it!
 
+## How does the shell command work?
+
+We have a prebuilt busybox standalone `ash` shell. standalone means that it executes commands internally
+without needing the commands to be on the path.
+
+We use a small [nsenter inspired utility](scratch-shell/enter.c) to inject the `ash` shell to your pods namespaces.
+Due to the syscalls we use, this requires linux kernel version 5.3+.
+
 # Iterating locally with kind
 ```sh
 make create-test-env
@@ -50,6 +58,9 @@ make reload-test-env
 
 # start a debug shell for example
 go run . shell -l app=curl
+
+# log command for example:
+go run . logs -l app=nginx curl "http://$(kubectl get node kind-control-plane -o jsonpath='{.status.addresses[0].address}'):$(kubectl get service nginx -o jsonpath='{.spec.ports[0].nodePort}')"
 ```
 
 # Iterating with a remote cluster
@@ -81,3 +92,7 @@ grpcurl -plaintext localhost:8087 kdiag.solo.io.Manager.Ps
 # Test krew bot
 
 docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.43 krew-release-bot template --tag v0.0.5 --template-file /tmp/template-file.yaml
+
+
+# Releasing
+To release, just push a new tag. go-releaser will create the github release.

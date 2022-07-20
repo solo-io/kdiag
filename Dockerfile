@@ -3,6 +3,7 @@ FROM --platform=${BUILDPLATFORM} docker.io/library/golang:1.18-bullseye as build
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
+ARG SHELL_IMG
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -21,29 +22,8 @@ COPY Makefile Makefile
 # Build
 RUN GOOS=linux GOARCH="${TARGETPLATFORM##linux/}" make build-manager
 
-FROM --platform=${TARGETPLATFORM} docker.io/library/ubuntu:22.04
+FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:60ce9e4
 
-# Install dependencies
-# note: we can't use linux-headers-$(uname -r), as we don't know the host kernel will match.
-# we just need some version of the headers so we can build busybox.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    lsb-release \
-    gdb gcc libc6-dev \
-    vim \
-    iproute2 iptables nftables \
-    strace make \
-    linux-libc-dev linux-headers-5.15.0-27-generic \
-    && rm -rf /var/lib/apt/lists/*
-
-# RUN ln -s /usr/include/asm-generic /usr/include/asm
-RUN ln -s /usr/include/*-linux-gnu/asm/ /usr/include/asm
-
-COPY scratch-shell/.config scratch-shell/build.sh scratch-shell/enter.c /scratch-shell/
-RUN cd /scratch-shell && ./build.sh && \
-    cp ./built/ash /usr/local/bin && \
-    gcc ./enter.c -o /usr/local/bin/enter
 
 WORKDIR /
 

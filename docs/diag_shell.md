@@ -33,7 +33,6 @@ diag shell [flags]
 ### Options
 
 ```
-      --debug-shell          start a debug shell in the ephemeral container instead of the pod's container
   -h, --help                 help for shell
   -l, --labels string        select a pod by label. an arbitrary pod will be selected, with preference to newer pods
       --pod string           podname to diagnose
@@ -47,7 +46,7 @@ diag shell [flags]
       --as string                      Username to impersonate for the operation. User could be a regular user or a service account in a namespace.
       --as-group stringArray           Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
       --as-uid string                  UID to impersonate for the operation.
-      --cache-dir string               Default cache directory (default "/var/home/yuval/.kube/cache")
+      --cache-dir string               Default cache directory (default "$HOME/.kube/cache")
       --certificate-authority string   Path to a cert file for the certificate authority
       --client-certificate string      Path to a client certificate file for TLS
       --client-key string              Path to a client key file for TLS

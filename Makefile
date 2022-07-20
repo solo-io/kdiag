@@ -5,16 +5,22 @@ COMMIT ?= $(shell git rev-parse HEAD)
 REPO ?= ghcr.io/solo-io/kdiag
 IMG ?= $(REPO):$(VERSION)
 LDFLAGS := "-X github.com/solo-io/kdiag/pkg/version.Version=$(VERSION) -X github.com/solo-io/kdiag/pkg/version.ImageRepo=$(REPO) -X github.com/solo-io/kdiag/pkg/version.Commit=$(COMMIT)"
+SHELL_VERSION ?= $(shell git --no-pager log -n 1 --pretty=format:"%h" ./scratch-shell)
+SHELL_IMG ?= $(REPO)-shell:$(SHELL_VERSION)
 
 .PHONY: all
 all: docker-build
+
+.PHONY: echo-shell-img
+echo-shell-img:
+	@echo $(SHELL_IMG)
 
 .PHONY: ginkgo-test
 test: ginkgo generate fmt vet
 	$(GINKGO) -r --coverprofile cover.out --race
 
 .PHONY: generate
-generate: protoc-gen-go
+generate: protoc-gen-go protoc-gen-go-grpc
 	PATH=$(shell pwd)/bin:$$PATH go generate ./...
 	go run pkg/cmd/scripts/docs.go
 
@@ -34,6 +40,11 @@ scratch-shell/built/enter: scratch-shell/enter.c
 docker-build:
 	DOCKER_BUILDKIT=1 docker build -f Dockerfile --tag ${IMG} --build-arg=VERSION=$(VERSION) --build-arg=COMMIT=$(COMMIT) .
 
+# for this to work on multiarch, you may need to registry the relevant qemu-user-static in binfmt; see ci/qemu.sh
+.PHONY: docker-shell-build-push
+docker-shell-build-push:
+	DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64,linux/arm64 --tag ${SHELL_IMG} --build-arg=VERSION=$(SHELL_VERSION) --build-arg=COMMIT=$(SHELL_VERSION) --push ./scratch-shell
+
 build-manager:
 	CGO_ENABLED=0 go build -a -o manager -ldflags=$(LDFLAGS) cmd/srv/srv.go
 
@@ -47,10 +58,15 @@ PROTOC_GEN_GO = $(shell pwd)/bin/protoc-gen-go
 protoc-gen-go: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(PROTOC_GEN_GO),google.golang.org/protobuf/cmd/protoc-gen-go@v1.27.1)
 
+PROTOC_GEN_GRPC_GO = $(shell pwd)/bin/protoc-gen-go-grpc
+.PHONY: protoc-gen-go-grpc
+protoc-gen-go-grpc: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(PROTOC_GEN_GRPC_GO),google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0)
+
 .PHONY: deploy-test-wokrloads
 deploy-test-wokrloads:
 	kubectl create deployment nginx --image=docker.io/library/nginx:1.19@sha256:2275af0f20d71b293916f1958f8497f987b8d8fd8113df54635f2a5915002bf1 || true
-	kubectl expose deploy nginx --port 80 --target-port 80 || true
+	kubectl expose deploy nginx --port 80 --target-port 80 --type=NodePort || true
 	kubectl create deployment curl --image=curlimages/curl@sha256:aa45e9d93122a3cfdf8d7de272e2798ea63733eeee6d06bd2ee4f2f8c4027d7c -- /bin/sh -c "while true; do curl --max-time 2 --head http://nginx; sleep 1; done"|| true
 
 .PHONY: create-test-cluster
