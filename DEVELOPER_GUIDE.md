@@ -94,5 +94,16 @@ grpcurl -plaintext localhost:8087 kdiag.solo.io.Manager.Ps
 docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.43 krew-release-bot template --tag v0.0.5 --template-file /tmp/template-file.yaml
 
 
+# scrach shell images
+
+These take a while so need to be pushed manually. to push these, do:
+
+```
+# setup qemu user binfmt_misc. needed to build the arm docker image
+sudo QEMU=$(which qemu-aarch64-static) ./ci/qemu.sh
+# build and push docker images
+make docker-shell-build-push
+```
+
 # Releasing
 To release, just push a new tag. go-releaser will create the github release.
