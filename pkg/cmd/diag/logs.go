@@ -85,9 +85,13 @@ func NewCmdLogs(diagOptions *DiagOptions) *cobra.Command {
 	cmd.Flags().BoolVarP(&o.all, "all", "a", false, "select all pods in the namespace")
 	cmd.Flags().StringVarP(&o.containerName, "container", "c", "", "default container name to use for logs. defaults to first container in the pod")
 	cmd.Flags().DurationVarP(&o.drainTime, "drain-duration", "d", time.Second/2, "duration to wait for logs after command exists")
-	cmd.Flags().BoolVar(&o.noColor, "no-color", !isTty(diagOptions.IOStreams.Out), "Disable color output")
+	cmd.Flags().BoolVar(&o.noColor, "no-color", false, "Disable color output")
 
 	return cmd
+}
+
+func colorNotAvailable(s io.Writer) bool {
+	return !isTty(s)
 }
 
 func isTty(s io.Writer) bool {
@@ -158,7 +162,8 @@ func (o *LogsOptions) Run() error {
 		Args:         o.args,
 		LogDrainTime: o.drainTime,
 	}
-	if o.noColor {
+
+	if colorNotAvailable() || o.noColor {
 		color.NoColor = true
 	}
 	return printer.PrintLogs(o.ctx, o.clientset.CoreV1().Pods(o.resultingContext.Namespace), o.podAndContainerNames)
