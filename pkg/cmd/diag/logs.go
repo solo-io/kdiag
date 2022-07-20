@@ -163,7 +163,7 @@ func (o *LogsOptions) Run() error {
 		LogDrainTime: o.drainTime,
 	}
 
-	if colorNotAvailable() || o.noColor {
+	if colorNotAvailable(o.IOStreams.Out) || o.noColor {
 		color.NoColor = true
 	}
 	return printer.PrintLogs(o.ctx, o.clientset.CoreV1().Pods(o.resultingContext.Namespace), o.podAndContainerNames)
