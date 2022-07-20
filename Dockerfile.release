@@ -1,4 +1,4 @@
-FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:60ce9e4
+FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:020030e
 
 WORKDIR /
 
