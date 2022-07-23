@@ -123,3 +123,4 @@ if [ ! -d built ]; then
 fi
 
 cp build/${busybox_dir}/busybox built/ash
+$CC $CFLAGS ./enter.c -o built/enter

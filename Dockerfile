@@ -22,10 +22,17 @@ COPY Makefile Makefile
 # Build
 RUN GOOS=linux GOARCH="${TARGETPLATFORM##linux/}" make build-manager
 
-FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:020030e
-
+FROM --platform=${TARGETPLATFORM} ghcr.io/solo-io/kdiag-shell:8ef4ab43
+COPY --from=builder /workspace/manager /usr/local/bin/manager
 
 WORKDIR /
 
-COPY --from=builder /workspace/manager /usr/local/bin/manager
+# Install dependencies
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    iproute2 iptables nftables \
+    strace make \
+    && rm -rf /var/lib/apt/lists/*
+
 ENTRYPOINT ["/usr/local/bin/manager"]

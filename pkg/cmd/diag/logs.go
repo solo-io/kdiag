@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/mattn/go-isatty"
+	"github.com/moby/term"
 	"github.com/samber/lo"
 	"github.com/solo-io/kdiag/pkg/logs"
 	"github.com/spf13/cobra"
@@ -96,7 +96,7 @@ func colorNotAvailable(s io.Writer) bool {
 
 func isTty(s io.Writer) bool {
 	if f, ok := s.(*os.File); ok {
-		return isatty.IsTerminal(f.Fd())
+		return term.IsTerminal(f.Fd())
 	}
 	return false
 }

@@ -5,7 +5,7 @@ COMMIT ?= $(shell git rev-parse HEAD)
 REPO ?= ghcr.io/solo-io/kdiag
 IMG ?= $(REPO):$(VERSION)
 LDFLAGS := "-X github.com/solo-io/kdiag/pkg/version.Version=$(VERSION) -X github.com/solo-io/kdiag/pkg/version.ImageRepo=$(REPO) -X github.com/solo-io/kdiag/pkg/version.Commit=$(COMMIT)"
-SHELL_VERSION ?= $(shell git --no-pager log -n 1 --pretty=format:"%h" ./scratch-shell)
+SHELL_VERSION ?= $(shell cd scratch-shell; cat $$(ls -AS .)| sha256sum |cut -c1-8)
 SHELL_IMG ?= $(REPO)-shell:$(SHELL_VERSION)
 
 .PHONY: all
@@ -45,6 +45,10 @@ docker-build:
 docker-shell-build-push:
 	DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64,linux/arm64 --tag ${SHELL_IMG} --build-arg=VERSION=$(SHELL_VERSION) --build-arg=COMMIT=$(SHELL_VERSION) --push ./scratch-shell
 
+.PHONY: docker-shell-build
+docker-shell-build:
+	DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64,linux/arm64 --tag ${SHELL_IMG} --build-arg=VERSION=$(SHELL_VERSION) --build-arg=COMMIT=$(SHELL_VERSION) ./scratch-shell
+
 build-manager:
 	CGO_ENABLED=0 go build -a -o manager -ldflags=$(LDFLAGS) cmd/srv/srv.go
 
@@ -62,6 +66,11 @@ PROTOC_GEN_GRPC_GO = $(shell pwd)/bin/protoc-gen-go-grpc
 .PHONY: protoc-gen-go-grpc
 protoc-gen-go-grpc: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(PROTOC_GEN_GRPC_GO),google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0)
+
+GORELEASER = $(shell pwd)/bin/goreleaser
+.PHONY: goreleaser
+goreleaser: ## Download envtest-setup locally if necessary.
+	$(call go-get-tool,$(GORELEASER),github.com/goreleaser/goreleaser@v1.10.2)
 
 .PHONY: deploy-test-wokrloads
 deploy-test-wokrloads:

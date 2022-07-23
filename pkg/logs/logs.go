@@ -21,6 +21,7 @@ type logEntry struct {
 	err     error
 	log     string
 	done    bool
+	fprintf func(w io.Writer, format string, a ...interface{}) (n int, err error)
 }
 
 type PodAndContainerName struct {
@@ -37,6 +38,19 @@ func (p *PodAndContainerName) String() string {
 	return podnameToPrint
 }
 
+func pallete(i int) *color.Color {
+	colors := []*color.Color{
+		color.New(color.FgHiRed),
+		color.New(color.FgHiGreen),
+		color.New(color.FgHiYellow),
+		color.New(color.FgHiBlue),
+		color.New(color.FgHiMagenta),
+		color.New(color.FgHiCyan),
+		color.New(color.FgHiWhite),
+	}
+	return colors[i%len(colors)]
+}
+
 type MultiLogPrinter struct {
 	Out          io.Writer
 	ErrOut       io.Writer
@@ -51,14 +65,14 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	podNameColor := color.New(color.FgGreen)
-
 	// exec!
 	zero := int64(0)
 	logEntries := make(chan logEntry)
 
 	var wg sync.WaitGroup
-	for _, podName := range podNames {
+	for i, podName := range podNames {
+
+		podNameColor := pallete(i)
 		// get the logs from the pod
 		currOpts := &corev1.PodLogOptions{
 			Container: podName.ContainerName,
@@ -80,15 +94,15 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 				if err != nil {
 					if err != io.EOF {
 						err := fmt.Errorf("failed to read logs: %w", err)
-						logEntries <- logEntry{podName: podName, err: err, done: true}
+						logEntries <- logEntry{podName: podName, fprintf: podNameColor.Fprintf, err: err, done: true}
 					} else {
-						logEntries <- logEntry{podName: podName, done: true}
+						logEntries <- logEntry{podName: podName, fprintf: podNameColor.Fprintf, done: true}
 					}
 					return
 				}
 
 				logline := strings.TrimSuffix(string(bytes), "\n")
-				logEntries <- logEntry{podName: podName, log: logline}
+				logEntries <- logEntry{podName: podName, fprintf: podNameColor.Fprintf, log: logline}
 			}
 		}(podName.String())
 	}
@@ -97,12 +111,14 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	go func() {
 		defer close(printLoopDone)
 		for entry := range logEntries {
-			if entry.err != nil && !errors.Is(entry.err, context.Canceled) {
-				fmt.Fprintf(m.ErrOut, "error reading logs for %s: %v\n", entry.podName, entry.err)
+			if entry.err != nil {
+				if !errors.Is(entry.err, context.Canceled) {
+					fmt.Fprintf(m.ErrOut, "error reading logs for %s: %v\n", entry.podName, entry.err)
+				}
 			} else if entry.done {
 				fmt.Fprintf(m.Out, "pod %s is done\n", entry.podName)
 			} else {
-				podNameColor.Fprintf(m.Out, "%s:", entry.podName)
+				entry.fprintf(m.Out, "%s:", entry.podName)
 				fmt.Fprintf(m.Out, " %s\n", entry.log)
 			}
 		}
