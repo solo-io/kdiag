@@ -16,12 +16,13 @@ diag shell [flags]
 	Note that this command needs linux kernel >= 5.3 to work. though this requirement may be relaxed
 	in the future if needed.
 
-	Optionally, you can start a shell to our ephemeral container (with --debug-shell flag). it has various debugging tools. 
-	this is essentially a shortcut to "kubectl debug" with our image, and mainly useful for development purposes.
-
 	For example:
 
 	kdiag -l app=productpage -n bookinfo -t istio-proxy shell
+
+	Example with arguments to ash:
+	
+	kdiag -l app=productpage -n bookinfo -t istio-proxy shell -- -c "top -n 1"
 
 	Start a shell targeting the istio-proxy container in the productpage pod.
 
