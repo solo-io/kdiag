@@ -17,6 +17,7 @@ fi
 set -e
 
 # make sure release and dev dockerfile are in sync
+diff <(grep "Install dependencies" -A1000 Dockerfile) <(grep "Install dependencies" -A1000 Dockerfile.release)
 
 SHELL_IMG=$(make echo-shell-img)
 

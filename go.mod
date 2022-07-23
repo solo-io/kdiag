@@ -6,8 +6,8 @@ require (
 	github.com/fatih/color v1.7.0
 	github.com/go-logr/zapr v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
-	github.com/mattn/go-isatty v0.0.3
 	github.com/mitchellh/go-ps v1.0.0
+	github.com/moby/term v0.0.0-20210610120745-9d4ed1856297
 	github.com/onsi/ginkgo/v2 v2.1.3
 	github.com/onsi/gomega v1.17.0
 	github.com/samber/lo v1.11.0
@@ -63,9 +63,9 @@ require (
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-colorable v0.0.9 // indirect
+	github.com/mattn/go-isatty v0.0.3 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
-	github.com/moby/term v0.0.0-20210610120745-9d4ed1856297 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/monochromegane/go-gitignore v0.0.0-20200626010858-205db1a8cc00 // indirect

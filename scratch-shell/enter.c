@@ -96,7 +96,9 @@ int main(int argc, char *argv[]) {
 
     // use execveat to execute the binary. This still works even though the binary doesn't exist
     // in our file system, because we already have an fd open to it.
-    int ret = execveat(bash_fd, "", argv, NULL, AT_EMPTY_PATH);
+    // int ret = execveat(bash_fd, "", argv, NULL, AT_EMPTY_PATH);
+    int ret = syscall(SYS_execveat, bash_fd, "", argv, NULL, AT_EMPTY_PATH);
+
     if (ret != 0) {
         perror("execveat");
         return 1;

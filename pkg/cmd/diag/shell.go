@@ -20,12 +20,13 @@ var (
 	Note that this command needs linux kernel >= 5.3 to work. though this requirement may be relaxed
 	in the future if needed.
 
-	Optionally, you can start a shell to our ephemeral container (with --debug-shell flag). it has various debugging tools. 
-	this is essentially a shortcut to "kubectl debug" with our image, and mainly useful for development purposes.
-
 	For example:
 
 	%[1]s -l app=productpage -n bookinfo -t istio-proxy shell
+
+	Example with arguments to ash:
+	
+	%[1]s -l app=productpage -n bookinfo -t istio-proxy shell -- -c "top -n 1"
 
 	Start a shell targeting the istio-proxy container in the productpage pod.
 
@@ -39,6 +40,7 @@ var (
 type ShellOptions struct {
 	*DiagOptions
 	debugShell bool
+	args       []string
 }
 
 // NewShellOptions provides an instance of ShellOptions with default values
@@ -72,17 +74,16 @@ func NewCmdShell(diagOptions *DiagOptions) *cobra.Command {
 		},
 	}
 	AddSinglePodFlags(cmd, o.DiagOptions)
-	//cmd.Flags().BoolVar(&o.debugShell, "debug-shell", false, "start a debug shell in the ephemeral container instead of the pod's container")
+	cmd.Flags().BoolVar(&o.debugShell, "debug-shell", false, "start a debug shell in the ephemeral container instead of the pod's container")
+	// hidden as it used for dev purposes.
+	cmd.Flags().MarkHidden("debug-shell")
 
 	return cmd
 }
 
 // Complete sets all information required for updating the current context
 func (o *ShellOptions) Complete(cmd *cobra.Command, args []string) error {
-
-	if len(args) > 0 {
-		return fmt.Errorf("no arguments are allowed")
-	}
+	o.args = args
 
 	return nil
 }
@@ -110,9 +111,19 @@ func (o *ShellOptions) Run() error {
 		Namespace(o.resultingContext.Namespace).
 		SubResource("exec")
 
-	t := o.SetupTTY()
-	// this call spawns a goroutine to monitor/update the terminal size
-	sizeQueue := t.MonitorSize(t.GetSize())
+	tty := isTty(o.IOStreams.Out)
+	var sizeQueue remotecommand.TerminalSizeQueue
+
+	safe := func(fn term.SafeFunc) error {
+		return fn()
+	}
+
+	if tty {
+		t := o.SetupTTY()
+		// this call spawns a goroutine to monitor/update the terminal size
+		sizeQueue = t.MonitorSize(t.GetSize())
+		safe = t.Safe
+	}
 
 	// unset p.Err if it was previously set because both stdout and stderr go over p.Out when tty is
 	// true
@@ -123,6 +134,7 @@ func (o *ShellOptions) Run() error {
 	if o.debugShell {
 		cmd = []string{"/bin/bash"}
 	}
+	cmd = append(cmd, o.args...)
 
 	execRequest.VersionedParams(&corev1.PodExecOptions{
 		Container: mgr.ContainerName(),
@@ -130,7 +142,7 @@ func (o *ShellOptions) Run() error {
 		Stdin:     true,
 		Stdout:    true,
 		Stderr:    o.ErrOut != nil,
-		TTY:       true,
+		TTY:       tty,
 	}, scheme.ParameterCodec)
 
 	exec, err := remotecommand.NewSPDYExecutor(o.restConfig, "POST", execRequest.URL())
@@ -144,7 +156,7 @@ func (o *ShellOptions) Run() error {
 			Stdin:             o.In,
 			Stdout:            o.Out,
 			Stderr:            o.ErrOut,
-			Tty:               true,
+			Tty:               tty,
 			TerminalSizeQueue: sizeQueue,
 		})
 
@@ -160,7 +172,7 @@ func (o *ShellOptions) Run() error {
 		return err
 	}
 
-	if err := t.Safe(fn); err != nil {
+	if err := safe(fn); err != nil {
 		return err
 	}
 

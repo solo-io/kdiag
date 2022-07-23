@@ -1,12 +1,14 @@
 package e2e_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -23,7 +25,8 @@ var _ = Describe("E2e", func() {
 		ns        string
 		clientset *kubernetes.Clientset
 
-		ctx context.Context
+		ctx     context.Context
+		devNull *os.File
 	)
 	const (
 		labelSelector = "app=nginx"
@@ -46,6 +49,14 @@ var _ = Describe("E2e", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		ctx = context.Background()
+
+		devNull, err = os.Open(os.DevNull)
+		Expect(err).NotTo(HaveOccurred())
+	})
+	AfterEach(func() {
+		if devNull != nil {
+			devNull.Close()
+		}
 	})
 
 	BeforeEach(func() {
@@ -83,12 +94,9 @@ var _ = Describe("E2e", func() {
 				close(received)
 			})
 		}))
-		f, err := os.Open(os.DevNull)
-		Expect(err).NotTo(HaveOccurred())
-		defer f.Close()
 
 		// run redir command
-		root := diag.NewCmdDiag(genericclioptions.IOStreams{In: f, Out: GinkgoWriter, ErrOut: GinkgoWriter})
+		root := diag.NewCmdDiag(genericclioptions.IOStreams{In: devNull, Out: GinkgoWriter, ErrOut: GinkgoWriter})
 		root.SetArgs([]string{
 			"-l", labelSelector, "redir", "80:8989",
 		})
@@ -97,7 +105,7 @@ var _ = Describe("E2e", func() {
 		received1 := make(chan struct{})
 		go func() {
 			defer GinkgoRecover()
-			err = root.ExecuteContext(ctx)
+			err := root.ExecuteContext(ctx)
 			if errors.Is(err, context.Canceled) {
 				Expect(err).NotTo(HaveOccurred())
 			}
@@ -109,4 +117,60 @@ var _ = Describe("E2e", func() {
 		Eventually(received1, "10s").Should(BeClosed())
 	})
 
+	It("should redirect outgoing traffic to us", func() {
+		received := make(chan struct{})
+		var once sync.Once
+		go http.ListenAndServe("localhost:8990", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			once.Do(func() {
+				close(received)
+			})
+		}))
+
+		// run redir command
+		root := diag.NewCmdDiag(genericclioptions.IOStreams{In: devNull, Out: GinkgoWriter, ErrOut: GinkgoWriter})
+		root.SetArgs([]string{
+			"-l", "app=curl", "redir", "--outgoing", "80:8990",
+		})
+
+		ctx, cancel := context.WithCancel(context.Background())
+		received1 := make(chan struct{})
+		go func() {
+			defer GinkgoRecover()
+			err := root.ExecuteContext(ctx)
+			if errors.Is(err, context.Canceled) {
+				Expect(err).NotTo(HaveOccurred())
+			}
+			close(received1)
+		}()
+		// the curl pod should hit the nginx pod every second
+		Eventually(received, "20s").Should(BeClosed())
+		cancel()
+		Eventually(received1, "10s").Should(BeClosed())
+	})
+
+	It("should have a top in the shell even though its not in the image", func() {
+		out := &bytes.Buffer{}
+		root := diag.NewCmdDiag(genericclioptions.IOStreams{In: devNull, Out: out, ErrOut: GinkgoWriter})
+		root.SetArgs([]string{"shell", "-l", "app=curl", "--", "-c", "top -n 1"})
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err := root.ExecuteContext(ctx)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(out.String()).To(ContainSubstring("do curl"))
+	})
+
+	It("should show logs from both apps a top in the shell even though its not in the image", func() {
+		out := &bytes.Buffer{}
+		root := diag.NewCmdDiag(genericclioptions.IOStreams{In: devNull, Out: out, ErrOut: out})
+		root.SetArgs([]string{"logs", "--all"})
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		root.ExecuteContext(ctx)
+
+		Eventually(out.String(), "10s").Should(ContainSubstring("HTTP/1.1 200 OK"))             // curl
+		Eventually(out.String(), "10s").Should(ContainSubstring(`HEAD / HTTP/1.1" 200 0 "-" `)) //nginx
+
+	})
 })

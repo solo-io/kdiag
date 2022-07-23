@@ -96,7 +96,7 @@ docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-re
 
 # scrach shell images
 
-These take a while so need to be pushed manually. to push these, do:
+These take a while to build and seldom change, so need to be pushed manually. to push these, do:
 
 ```
 # setup qemu user binfmt_misc. needed to build the arm docker image
