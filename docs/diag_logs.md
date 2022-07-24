@@ -30,7 +30,7 @@ diag logs [flags]
 ```
   -a, --all                       select all pods in the namespace
   -c, --container string          default container name to use for logs. defaults to first container in the pod
-  -d, --drain-duration duration   duration to wait for logs after command exists (default 500ms)
+  -d, --drain-duration duration   duration to wait for logs after command exits (default 500ms)
   -h, --help                      help for logs
   -l, --labels stringArray        select a pods to watch logs by label. you can use k=v:containername to specify container name
       --no-color                  Disable color output
