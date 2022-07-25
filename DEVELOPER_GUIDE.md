@@ -45,7 +45,7 @@ When doing a reverse port forward, the follow happens:
 ## How does the shell command work?
 
 We have a prebuilt busybox standalone `ash` shell. standalone means that it executes commands internally
-without needing the commands to be on the path.
+without needing the commands to be on the path (it needs the `/proc` file-system mounted).
 
 We use a small [nsenter inspired utility](scratch-shell/enter.c) to inject the `ash` shell to your pods namespaces.
 Due to the syscalls we use, this requires linux kernel version 5.3+.
@@ -65,7 +65,7 @@ go run . logs -l app=nginx curl "http://$(kubectl get node kind-control-plane -o
 
 # Iterating with a remote cluster
 
-This shows how to query the debug container with grpcurl
+This shows how to query the ephemeral container with grpcurl for development purposes:
 
 ```sh
 # clean slate
@@ -91,10 +91,10 @@ grpcurl -plaintext localhost:8087 kdiag.solo.io.Manager.Ps
 
 # Test krew bot
 
-docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.43 krew-release-bot template --tag v0.0.5 --template-file /tmp/template-file.yaml
+docker run --rm -v ${PWD}/.krew.yaml:/tmp/template-file.yaml rajatjindal/krew-release-bot:v0.0.43 krew-release-bot template --tag v0.0.9 --template-file /tmp/template-file.yaml
 
 
-# scrach shell images
+# Scrach shell base-images
 
 These take a while to build and seldom change, so need to be pushed manually. to push these, do:
 

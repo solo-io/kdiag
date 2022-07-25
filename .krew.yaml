@@ -50,11 +50,13 @@ spec:
       matchLabels:
         os: windows
         arch: amd64
-  shortDescription: Diagnostics tools for kubernetes developers.
+  shortDescription: Debug/Diagnostics tools for kubernetes backend systems developers.
   caveats: |
     This uses high privilege ephemeral containers, and not suited for production.
   description: |
-    When working with systems that span multiple micro-services, it can be hard to get a local setup
-    working in-order to debug it. This plugin has a set of tools to assist you with that. Redirecting traffic
-    from a pod to your laptop, so you can only run the components you care about locally. Viewing logs
-    from multiple pods at the same time, so you can see how the system responds on both ends.
+        Systems that span multiple micro-services (istio for example), can be hard to debug.
+        This plugin has a set of tools to assist you with such debugging:
+        - Redirecting traffic from a pod to a laptop, so you can run a server on your laptop and redirect client
+          traffic from the cluster to it (i.e. run istiod with your changes locally, and have envoy from the cluster connect to it)
+        - Viewing logs from multiple pods at the same time (i.e. run a curl command and see logs form all the bookinfo pods as the request travels through them)
+        - Ability to exec into distroless/scratch containers. To let you can exec to your pods even if they don't have a shell binary in them (i.e. deployments in staging environments).

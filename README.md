@@ -19,33 +19,6 @@ It allows you to get the following:
 
 # Examples
 
-Reverse port forward - redirect traffic pod's port 8080 to local port 8089
-
-```sh
-kubectl diag redir --pod mypod 8080:8089
-```
-
-Reverse port forward - redirect all the ports the pod listens on, to localhost.
-
-```sh
-kubectl diag redir --pod mypod
-```
-
-Reverse port forward - redirect outgoing traffic from the port 8080 on the pod pod to local port 8080 (in outgoing mode, ports must be specified).
-
-```sh
-kubectl diag redir --pod mypod 8080 --outgoing
-```
-
-Start a busybox shell (works even on scratch containers!):
-
-```sh
-kubectl diag shell --pod mypod
-```
-Note that the shell shares the pid namespace with the first container in the pod (can be changed using `-t` flag). This means that you can do `cd /proc/1/root` to access the other container's file system.
-
-# Recipes
-
 ## Local Istio Debug
 
 To redirect a sidecar to your istio running on your laptop, start your local pilot discovery, and then:
@@ -54,13 +27,25 @@ To redirect a sidecar to your istio running on your laptop, start your local pil
 kubectl diag -l app=productpage -n bookinfo redirect --outgoing 15010 15012 15014
 ```
 
-## Get root on a non root container
+Redirect all ports that istiod listens on locally:
 
-For example, get a root shell in the istio-proxy container:
+```sh
+kubectl diag -l app=istiod -n bookinfo redirect
+```
+
+You can also specify specific ports:
+
+```sh
+kubectl diag -l app=istiod -n bookinfo redirect 15012:15012
+```
+
+## Get a root shell in a container
+
+For example, get a root [`ash`](https://www.busybox.net/) shell in the istio-proxy container:
+Note that this works even on scratch and distroless containers!
 
 ```sh
 kubectl diag shell -l app=productpage -t istio-proxy
-nsenter -t 1 -a /bin/bash
 ```
 
 ## Log multiple pods at once
