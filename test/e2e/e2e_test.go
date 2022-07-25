@@ -72,15 +72,19 @@ var _ = Describe("E2e", func() {
 			if len(pl.Items) != 1 {
 				return errors.New("other pod still exists")
 			}
-			for _, pod := range pl.Items {
-				if pod.DeletionTimestamp != nil {
-					continue
-				}
-				if pod.Status.Phase == corev1.PodRunning {
+			pod := pl.Items[0]
+			if !pod.DeletionTimestamp.IsZero() {
+				return errors.New("pod being deleted")
+			}
+			if pod.Status.Phase == corev1.PodRunning {
+				return nil
+			}
+			for _, cond := range pod.Status.Conditions {
+				if cond.Type == corev1.PodReady && cond.Status == corev1.ConditionTrue {
 					return nil
 				}
 			}
-			return fmt.Errorf("no pod is running")
+			return fmt.Errorf("no pod is running and ready")
 
 		}, "20s", "1s").Should(Succeed())
 
@@ -171,6 +175,48 @@ var _ = Describe("E2e", func() {
 
 		Eventually(out.String(), "10s").Should(ContainSubstring("HTTP/1.1 200 OK"))             // curl
 		Eventually(out.String(), "10s").Should(ContainSubstring(`HEAD / HTTP/1.1" 200 0 "-" `)) //nginx
+		Expect(ctx.Err()).To(Equal(context.DeadlineExceeded))
+	})
 
+	It("should show logs using a command", func() {
+		// use safe writer here as both command output and log output are written here,
+		// and can happen concurrently.
+		out := &SafeWriter{}
+
+		root := diag.NewCmdDiag(genericclioptions.IOStreams{In: devNull, Out: out, ErrOut: out})
+
+		// get the node port and node ip:
+		nodes, err := clientset.CoreV1().Nodes().List(ctx, v1.ListOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(nodes.Items).ToNot(BeEmpty())
+
+		svcs, err := clientset.CoreV1().Services(ns).List(ctx, v1.ListOptions{LabelSelector: labelSelector})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(svcs.Items).ToNot(BeEmpty())
+
+		ip := nodes.Items[0].Status.Addresses[0].Address
+		port := svcs.Items[0].Spec.Ports[0].NodePort
+		args := []string{"logs", "-l", labelSelector, "--drain-duration", "2s", "--", "curl", fmt.Sprintf("http://%s:%d/test", ip, port), "--retry", "3", "--max-time", "5"}
+		root.SetArgs(args)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		fmt.Fprintln(GinkgoWriter, "logs command:", args, "time", time.Now().Format(time.RFC3339))
+		err = root.ExecuteContext(ctx)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(ctx.Err()).NotTo(HaveOccurred())
+		Expect(out.Buff.String()).To(ContainSubstring(`GET /test HTTP/1.1" 404`)) //nginx
 	})
 })
+
+type SafeWriter struct {
+	Buff bytes.Buffer
+	m    sync.Mutex
+}
+
+func (w *SafeWriter) Write(p []byte) (n int, err error) {
+	w.m.Lock()
+	defer w.m.Unlock()
+	return w.Buff.Write(p)
+}

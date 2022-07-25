@@ -68,6 +68,7 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 	// exec!
 	zero := int64(0)
 	logEntries := make(chan logEntry)
+	allDone := make(chan struct{})
 
 	var wg sync.WaitGroup
 	for i, podName := range podNames {
@@ -91,6 +92,11 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 			r := bufio.NewReader(readCloser)
 			for {
 				bytes, err := r.ReadBytes('\n')
+
+				if len(bytes) != 0 {
+					logline := strings.TrimSuffix(string(bytes), "\n")
+					logEntries <- logEntry{podName: podName, fprintf: podNameColor.Fprintf, log: logline}
+				}
 				if err != nil {
 					if err != io.EOF {
 						err := fmt.Errorf("failed to read logs: %w", err)
@@ -101,11 +107,14 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 					return
 				}
 
-				logline := strings.TrimSuffix(string(bytes), "\n")
-				logEntries <- logEntry{podName: podName, fprintf: podNameColor.Fprintf, log: logline}
 			}
 		}(podName.String())
 	}
+
+	go func() {
+		wg.Wait()
+		close(allDone)
+	}()
 
 	printLoopDone := make(chan struct{})
 	go func() {
@@ -141,7 +150,11 @@ func (m *MultiLogPrinter) PrintLogs(ctx context.Context, podclient typedcorev1.P
 		}
 	} else {
 		// wait until user interrupts us.
-		<-ctx.Done()
+		// or all the pods exited
+		select {
+		case <-ctx.Done():
+		case <-allDone:
+		}
 	}
 
 	// cancel the log context
