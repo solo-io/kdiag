@@ -196,7 +196,7 @@ var _ = Describe("E2e", func() {
 
 		ip := nodes.Items[0].Status.Addresses[0].Address
 		port := svcs.Items[0].Spec.Ports[0].NodePort
-		args := []string{"logs", "-l", labelSelector, "--drain-duration", "2s", "--", "curl", fmt.Sprintf("http://%s:%d/test", ip, port), "--retry", "3", "--retry-all-errors", "--max-time", "5"}
+		args := []string{"logs", "-l", labelSelector, "--drain-duration", "2s", "--", "curl", fmt.Sprintf("http://%s:%d/test", ip, port), "--retry", "3", "--max-time", "5"}
 		root.SetArgs(args)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
